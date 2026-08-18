@@ -14,7 +14,7 @@ const NAV = [
 const AVATAR =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDrjdRfJFKIP5xlNr0mokA1SpUCabwicHUZOsXb-RHDhtHrtWPOVCTVhvr5WkUytwuEizfPPtfbUq1o9qGBhZdV4cTQBxZ8XwN_M0xGrRn9sqYfIfZ6IBcfQhWtwUV2K6uEVvauVFD3p8fD93qIdpVuHsoriBUaPovE3FFpHgZyEREsB96rHRA69U_Rs3rJSbbRBpJU8eSbklS5OILLhmis4X21Y4N1jvRSAxIMo5_p5U0nzMYofiitUg";
 
-function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: (() => void) | undefined }) {
   return (
     <nav className="flex-1 space-y-1">
       {NAV.map((item) => {
