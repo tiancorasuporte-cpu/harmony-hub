@@ -40,7 +40,7 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () =
   );
 }
 
-function SidebarInner({ onNavigate, pathname }: { onNavigate?: () => void; pathname: string }) {
+function SidebarInner({ onNavigate, pathname }: { onNavigate?: (() => void) | undefined; pathname: string }) {
   return (
     <div className="flex h-full flex-col px-md py-xl">
       <div className="mb-xl flex items-center gap-sm px-xs">
