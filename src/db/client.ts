@@ -92,7 +92,7 @@ export function getSql() {
   return client;
 }
 
-function upsertEnv(updates: Record<string, string>) {
+export function upsertEnv(updates: Record<string, string>) {
   let text = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
   if (text && !text.endsWith("\n")) text += "\n";
   for (const [key, value] of Object.entries(updates)) {

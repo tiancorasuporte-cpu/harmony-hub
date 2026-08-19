@@ -45,7 +45,7 @@ function People() {
           ? "inStay"
           : "pending";
       if (stayFilter !== "all" && stay !== stayFilter) return false;
-      return matchesQuery(query, [person.name, person.cpf, person.room, person.roomType]);
+      return matchesQuery(query, [person.name, person.cpf, person.room, person.roomType, person.phone]);
     });
   }, [guests, stayFilter, query]);
 

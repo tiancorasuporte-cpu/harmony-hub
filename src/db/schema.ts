@@ -150,6 +150,8 @@ export async function ensureSchema() {
   await addColumn("guests", "document_type", "varchar(16) not null default 'cpf'");
   await addColumn("guests", "room_type", "varchar(32)");
   await addColumn("guests", "target_all", "boolean not null default true");
+  await addColumn("guests", "phone", "varchar(20)");
+  await addColumn("guests", "whatsapp_notified_at", "timestamptz");
   if (await columnExists("guests", "cpf")) {
     await sql.unsafe("alter table guests alter column cpf type varchar(32)");
   }

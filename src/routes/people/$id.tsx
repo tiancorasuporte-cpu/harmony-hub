@@ -11,7 +11,7 @@ import {
   syncPersonDeviceFn,
   updatePersonFn,
 } from "@/lib/people";
-import { formatCpf, toDateTimeInput } from "@/lib/stay";
+import { formatCpf, formatPhone, toDateTimeInput } from "@/lib/stay";
 import { requireAuth } from "@/lib/require-auth";
 
 export const Route = createFileRoute("/people/$id")({
@@ -53,6 +53,7 @@ function EditPerson() {
   );
   const [photoChanged, setPhotoChanged] = useState(false);
   const [room, setRoom] = useState(person?.room ?? "");
+  const [phone, setPhone] = useState(person?.phone ? formatPhone(person.phone) : "");
 
   const fieldClass =
     "input-glow mt-base w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none focus:border-primary";
@@ -118,6 +119,7 @@ function EditPerson() {
             if (roomValue) payload.room = roomValue;
             if (roomType) payload.roomType = roomType;
             if (department) payload.department = department;
+            if (kind === "guest") payload.phone = phone;
             if (photoChanged && photo) {
               payload.photoBase64 = photo;
               payload.photoMime = "image/jpeg";
@@ -210,6 +212,20 @@ function EditPerson() {
                     />
                   </label>
                 </div>
+                {kind === "guest" ? (
+                  <label className="block text-label-md text-on-surface-variant">
+                    WhatsApp
+                    <input
+                      required
+                      value={phone}
+                      onChange={(event) => setPhone(formatPhone(event.target.value))}
+                      placeholder="(11) 99999-9999"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      className={fieldClass}
+                    />
+                  </label>
+                ) : null}
               </div>
             </section>
 

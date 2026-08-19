@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { parseDateTimeInput } from "@/lib/stay";
+import { parseDateTimeInput, toWhatsAppChatId } from "@/lib/stay";
 
 const createPersonSchema = z.object({
   name: z.string().trim().min(2, "Informe o nome"),
@@ -9,6 +9,7 @@ const createPersonSchema = z.object({
   cpf: z.string().trim().min(5, "Informe o documento"),
   room: z.string().trim().max(32).optional(),
   roomType: z.string().trim().max(32).optional(),
+  phone: z.string().trim().max(20).optional(),
   kind: z.enum(["guest", "staff"]),
   department: z.string().trim().max(80).optional(),
   checkIn: z.string().trim().min(16, "Informe data e hora do check-in"),
@@ -110,6 +111,11 @@ export const createPersonFn = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Já existe uma pessoa com este documento." };
     }
 
+    const phone = data.phone?.trim() || null;
+    if (data.kind === "guest" && !toWhatsAppChatId(phone)) {
+      return { ok: false as const, error: "Informe o WhatsApp do hóspede com DDD." };
+    }
+
     const checkIn = parseDateTimeInput(data.checkIn);
     const checkOut = parseDateTimeInput(data.checkOut);
     if (!checkIn || !checkOut) {
@@ -129,6 +135,7 @@ export const createPersonFn = createServerFn({ method: "POST" })
         name: data.name,
         cpf: document,
         room: data.kind === "guest" ? data.room || null : null,
+        phone: data.kind === "guest" ? phone : null,
         kind: data.kind,
         department: data.kind === "staff" ? data.department || null : null,
         photo: decoded.photo,
@@ -234,6 +241,7 @@ export const getPersonFn = createServerFn({ method: "GET" })
         name: person.name,
         cpf: person.cpf,
         room: person.room,
+        phone: person.phone,
         kind: person.kind === "staff" ? ("staff" as const) : ("guest" as const),
         department: person.department,
         documentType: (person.document_type || "cpf") as "cpf" | "rg" | "passport",
@@ -268,6 +276,11 @@ export const updatePersonFn = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Já existe uma pessoa com este documento." };
     }
 
+    const phone = data.phone?.trim() || null;
+    if (data.kind === "guest" && !toWhatsAppChatId(phone)) {
+      return { ok: false as const, error: "Informe o WhatsApp do hóspede com DDD." };
+    }
+
     const checkIn = parseDateTimeInput(data.checkIn);
     const checkOut = parseDateTimeInput(data.checkOut);
     if (!checkIn || !checkOut) {
@@ -286,6 +299,7 @@ export const updatePersonFn = createServerFn({ method: "POST" })
         name: data.name,
         cpf: document,
         room: data.kind === "guest" ? data.room || null : null,
+        phone: data.kind === "guest" ? phone : null,
         kind: data.kind,
         department: data.kind === "staff" ? data.department || null : null,
         photo: decoded.photo,
@@ -297,6 +311,10 @@ export const updatePersonFn = createServerFn({ method: "POST" })
         targetAll: data.targetAll,
       });
       await setGuestDevices(data.id, data.targetAll ? [] : data.deviceIds);
+      if ((current.phone ?? "") !== (phone ?? "")) {
+        const { clearWhatsappNotified } = await import("@/db/people");
+        await clearWhatsappNotified(data.id);
+      }
       const { person } = await personInHotel(data.id);
       if (person) await revokePersonFromUntargeted(person);
       const stay = await processStayWindows();

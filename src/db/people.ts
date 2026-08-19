@@ -12,6 +12,8 @@ export type PersonRow = {
   control_id_user_id: number | null;
   hotel_id: number;
   kind: string;
+  phone: string | null;
+  whatsapp_notified_at: Date | null;
   department: string | null;
   document_type: string | null;
   room_type: string | null;
@@ -27,6 +29,7 @@ export type PersonPublic = {
   name: string;
   cpf: string;
   room: string | null;
+  phone: string | null;
   checkIn: string | null;
   checkOut: string | null;
   kind: PersonKind;
@@ -47,6 +50,7 @@ export type NewPerson = {
   room?: string | null;
   kind: PersonKind;
   hotelId: number;
+  phone?: string | null;
   department?: string | null;
   documentType?: string;
   roomType?: string | null;
@@ -79,6 +83,7 @@ export async function listPeople(hotelId: number): Promise<PersonPublic[]> {
       g.name,
       g.cpf,
       g.room,
+      g.phone,
       g.check_in,
       g.check_out,
       g.control_id_user_id,
@@ -111,6 +116,7 @@ export async function listPeople(hotelId: number): Promise<PersonPublic[]> {
     name: row.name,
     cpf: row.cpf,
     room: row.room,
+    phone: row.phone,
     checkIn: toIso(row.check_in),
     checkOut: toIso(row.check_out),
     kind: toKind(row.kind),
@@ -154,13 +160,14 @@ export async function insertPerson(input: NewPerson): Promise<PersonPublic> {
   const db = await getDb();
   const rows = await db<{ id: number }[]>`
     insert into guests (
-      name, cpf, room, kind, department, photo, photo_mime,
+      name, cpf, room, phone, kind, department, photo, photo_mime,
       check_in, check_out, document_type, room_type, target_all, hotel_id
     )
     values (
       ${input.name},
       ${input.cpf},
       ${input.room ?? null},
+      ${input.phone ?? null},
       ${input.kind},
       ${input.department ?? null},
       ${input.photo ?? null},
@@ -186,7 +193,7 @@ export async function updatePersonPhoto(id: number, photo: Buffer, mime: string)
   const db = await getDb();
   await db`
     update guests
-    set photo = ${photo}, photo_mime = ${mime}, updated_at = now()
+    set photo = ${photo}, photo_mime = ${mime}, whatsapp_notified_at = null, updated_at = now()
     where id = ${id}
   `;
   await db`
@@ -398,6 +405,7 @@ export async function updatePerson(
     name: string;
     cpf: string;
     room?: string | null;
+    phone?: string | null;
     kind: PersonKind;
     department?: string | null;
     documentType?: string;
@@ -417,6 +425,7 @@ export async function updatePerson(
         name = ${input.name},
         cpf = ${input.cpf},
         room = ${input.room ?? null},
+        phone = ${input.phone ?? null},
         kind = ${input.kind},
         department = ${input.department ?? null},
         document_type = ${input.documentType ?? "cpf"},
@@ -426,6 +435,7 @@ export async function updatePerson(
         target_all = ${input.targetAll ?? true},
         photo = ${input.photo},
         photo_mime = ${input.photoMime ?? "image/jpeg"},
+        whatsapp_notified_at = null,
         updated_at = now()
       where id = ${id}
     `;
@@ -441,6 +451,7 @@ export async function updatePerson(
         name = ${input.name},
         cpf = ${input.cpf},
         room = ${input.room ?? null},
+        phone = ${input.phone ?? null},
         kind = ${input.kind},
         department = ${input.department ?? null},
         document_type = ${input.documentType ?? "cpf"},
@@ -452,6 +463,22 @@ export async function updatePerson(
       where id = ${id}
     `;
   }
+}
+
+export async function claimWhatsappNotify(id: number) {
+  const db = await getDb();
+  const rows = await db<{ id: number }[]>`
+    update guests
+    set whatsapp_notified_at = now(), updated_at = now()
+    where id = ${id} and whatsapp_notified_at is null
+    returning id
+  `;
+  return Boolean(rows[0]);
+}
+
+export async function clearWhatsappNotified(id: number) {
+  const db = await getDb();
+  await db`update guests set whatsapp_notified_at = null, updated_at = now() where id = ${id}`;
 }
 
 export async function deletePerson(id: number) {

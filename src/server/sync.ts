@@ -17,6 +17,7 @@ import {
   type PersonRow,
 } from "@/db/people";
 import { isCheckedOut, isInStay, stayWindow, toDeviceUnix } from "@/lib/stay";
+import { notifyGuestFaceReady } from "@/server/waha";
 import {
   addUserToGroup,
   destroyUser,
@@ -145,7 +146,9 @@ export async function syncPersonToDevice(person: PersonRow, deviceId: number) {
     const ids = await listGuestDeviceIds(person.id);
     if (!ids.includes(deviceId)) await setGuestDevices(person.id, [...ids, deviceId]);
   }
-  return enrollPersonOnDevice(person, device);
+  const result = await enrollPersonOnDevice(person, device);
+  const whatsapp = await notifyGuestFaceReady(person);
+  return { ...result, whatsapp };
 }
 
 export async function removePersonFromDevice(person: PersonRow, deviceId: number) {
@@ -207,6 +210,8 @@ export async function processStayWindows() {
           }
           await enrollPersonOnDevice(person, device);
         }
+        const whatsapp = await notifyGuestFaceReady(person);
+        if (whatsapp.error) errors.push(whatsapp.error);
         enrolled.push(person.name);
       } else if (isCheckedOut(person.check_out)) {
         const mappings = await listDevicePeopleByGuest(person.id);
@@ -243,6 +248,8 @@ export async function syncDevice(deviceId: number) {
         const result = await enrollPersonOnDevice(person, device);
         users += 1;
         if (result.faceSynced) faces += 1;
+        const whatsapp = await notifyGuestFaceReady(person);
+        if (whatsapp.error) errors.push(whatsapp.error);
       } else if (isCheckedOut(person.check_out)) {
         await revokePersonOnDevice(person, device);
       }

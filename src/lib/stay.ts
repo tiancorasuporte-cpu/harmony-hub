@@ -109,3 +109,47 @@ export function formatCpf(value: string) {
   if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
+
+export function phoneDigits(value: string) {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("0")) digits = digits.replace(/^0+/, "");
+  return digits.slice(0, 13);
+}
+
+export function formatPhone(value: string) {
+  let digits = phoneDigits(value);
+  if (digits.startsWith("55") && digits.length > 11) digits = digits.slice(2);
+  digits = digits.slice(0, 11);
+  if (digits.length <= 2) return digits ? `(${digits}` : "";
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+export function toWhatsAppChatId(value: string | null | undefined) {
+  if (!value) return null;
+  let digits = phoneDigits(value);
+  if (digits.length === 10 || digits.length === 11) digits = `55${digits}`;
+  if (digits.length < 12 || digits.length > 15) return null;
+  return `${digits}@c.us`;
+}
+
+export function formatStayDateTime(value: Date | string | null | undefined) {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const dateFmt: Intl.DateTimeFormatOptions = {
+    timeZone: APP_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  };
+  const timeFmt: Intl.DateTimeFormatOptions = {
+    timeZone: APP_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+  return `${date.toLocaleDateString("pt-BR", dateFmt)} às ${date.toLocaleTimeString("pt-BR", timeFmt)}`;
+}

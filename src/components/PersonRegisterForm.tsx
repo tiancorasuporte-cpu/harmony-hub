@@ -6,7 +6,7 @@ import { DeviceTargetPicker, type DeviceOption } from "@/components/DeviceTarget
 import { FaceCapture } from "@/components/FaceCapture";
 import { Icon } from "@/components/Icon";
 import { createPersonFn } from "@/lib/people";
-import { formatCpf, toDateTimeInput } from "@/lib/stay";
+import { formatCpf, formatPhone, toDateTimeInput } from "@/lib/stay";
 
 const ROOM_TYPES = ["Simples", "Duplo", "Triplo", "Suíte", "Premium"] as const;
 
@@ -34,6 +34,7 @@ export function PersonRegisterForm({
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [room, setRoom] = useState("");
+  const [phone, setPhone] = useState("");
   const [roomNote, setRoomNote] = useState<string | null>(null);
 
   const fieldClass =
@@ -81,6 +82,7 @@ export function PersonRegisterForm({
             if (kind === "guest") {
               if (roomValue) payload.room = roomValue;
               if (roomType) payload.roomType = roomType;
+              payload.phone = phone;
             } else if (department) {
               payload.department = department;
             }
@@ -117,7 +119,7 @@ export function PersonRegisterForm({
             <p className="mt-base text-body-md text-on-surface-variant">
               {kind === "staff"
                 ? "A foto vai para o Face Max no início da vigência e é removida no fim do período."
-                : "A foto vai para o Face Max no check-in e é apagada no check-out."}
+                : "Informe o WhatsApp. A foto vai para o Face Max no check-in e é apagada no check-out. O hóspede recebe a confirmação pelo WhatsApp."}
             </p>
           </div>
           <div className="flex gap-sm">
@@ -182,7 +184,21 @@ export function PersonRegisterForm({
                     Setor / função
                     <input name="department" required placeholder="Recepção, governança, segurança…" className={fieldClass} />
                   </label>
-                ) : null}
+                ) : (
+                  <label className="block text-label-md text-on-surface-variant">
+                    WhatsApp
+                    <input
+                      required
+                      name="phone"
+                      value={phone}
+                      onChange={(event) => setPhone(formatPhone(event.target.value))}
+                      placeholder="(11) 99999-9999"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      className={fieldClass}
+                    />
+                  </label>
+                )}
               </div>
             </section>
 
