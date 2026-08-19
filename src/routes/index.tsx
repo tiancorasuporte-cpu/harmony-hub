@@ -6,8 +6,15 @@ import { Icon } from "@/components/Icon";
 import { redirectIfAuthenticated } from "@/lib/require-auth";
 import { loginFn } from "@/lib/auth";
 
+type LoginSearch = {
+  hotel?: string;
+};
+
 export const Route = createFileRoute("/")({
   beforeLoad: redirectIfAuthenticated,
+  validateSearch: (search: Record<string, unknown>): LoginSearch => ({
+    hotel: typeof search.hotel === "string" ? search.hotel.trim() : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Entrar — Âncora Access" },
@@ -26,6 +33,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Login() {
+  const { hotel: hotelFromLink } = Route.useSearch();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +50,7 @@ function Login() {
             Âncora Access
           </h1>
           <p className="mt-base text-center text-body-md text-on-surface-variant">
-            Suíte de gestão
+            Acesso da unidade
           </p>
         </header>
 
@@ -53,18 +61,20 @@ function Login() {
             setError(null);
             setPending(true);
             const form = new FormData(event.currentTarget);
+            const hotelSlug = String(form.get("hotelSlug") ?? "").trim();
             try {
               const result = await loginFn({
                 data: {
                   username: String(form.get("username") ?? ""),
                   password: String(form.get("password") ?? ""),
+                  hotelSlug,
                 },
               });
               if (!result.ok) {
                 setError(result.error);
                 return;
               }
-              await navigate({ to: "/monitoring" });
+              await navigate({ to: result.hotelId ? "/monitoring" : "/hotels" });
             } catch {
               setError("Não foi possível conectar ao servidor. Tente novamente.");
             } finally {
@@ -72,6 +82,28 @@ function Login() {
             }
           }}
         >
+          <div className="flex flex-col gap-base">
+            <label className="text-label-md text-primary" htmlFor="hotelSlug">
+              Código da unidade
+            </label>
+            <div className="relative">
+              <Icon
+                name="apartment"
+                className="absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+              />
+              <input
+                id="hotelSlug"
+                name="hotelSlug"
+                type="text"
+                required
+                defaultValue={hotelFromLink ?? ""}
+                autoComplete="organization"
+                placeholder="Informe o código da unidade"
+                className="input-glow w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-sm pl-xl pr-sm text-body-md text-on-surface outline-none transition-all placeholder:text-outline focus:border-primary"
+              />
+            </div>
+          </div>
+
           <div className="flex flex-col gap-base">
             <label className="text-label-md text-primary" htmlFor="username">
               Usuário
@@ -135,14 +167,6 @@ function Login() {
               {pending ? "Entrando..." : "Acessar"}
               <Icon name="arrow_forward" className="text-[20px]" />
             </button>
-            <div className="mt-base flex w-full justify-center">
-              <a
-                href="#"
-                className="text-label-md text-on-surface-variant transition-colors hover:text-primary"
-              >
-                Esqueceu a senha?
-              </a>
-            </div>
           </div>
         </form>
       </main>

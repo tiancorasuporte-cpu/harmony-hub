@@ -4,6 +4,7 @@ import "@/db/client";
 
 export type AuthSessionData = {
   userId: number;
+  hotelId?: number | null;
 };
 
 function sessionPassword() {

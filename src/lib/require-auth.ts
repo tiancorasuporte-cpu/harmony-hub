@@ -4,12 +4,18 @@ import { getCurrentUser } from "@/lib/auth";
 import { getSetupStatusFn } from "@/lib/setup";
 import type { AppUser } from "@/db/schema";
 
+export function isSuperadmin(user: Pick<AppUser, "role"> | null | undefined) {
+  return user?.role === "superadmin";
+}
+
 export function isAdmin(user: Pick<AppUser, "role"> | null | undefined) {
-  return user?.role === "admin";
+  return user?.role === "admin" || user?.role === "superadmin";
 }
 
 export function roleLabel(role: string) {
-  return role === "admin" ? "Administrador" : "Porteiro";
+  if (role === "superadmin") return "Superadmin";
+  if (role === "admin") return "Administrador";
+  return "Porteiro";
 }
 
 export async function requireAuth() {
@@ -20,6 +26,9 @@ export async function requireAuth() {
   const user = await getCurrentUser();
   if (!user) {
     throw redirect({ to: "/" });
+  }
+  if (!user.hotelId) {
+    throw redirect({ to: "/hotels" });
   }
   return { user };
 }
@@ -32,6 +41,21 @@ export async function requireAdmin() {
   return { user };
 }
 
+export async function requireSuperadmin() {
+  const { configured } = await getSetupStatusFn();
+  if (!configured) {
+    throw redirect({ to: "/setup" });
+  }
+  const user = await getCurrentUser();
+  if (!user) {
+    throw redirect({ to: "/" });
+  }
+  if (!isSuperadmin(user)) {
+    throw redirect({ to: "/monitoring" });
+  }
+  return { user };
+}
+
 export async function redirectIfAuthenticated() {
   const { configured } = await getSetupStatusFn();
   if (!configured) {
@@ -39,6 +63,6 @@ export async function redirectIfAuthenticated() {
   }
   const user = await getCurrentUser();
   if (user) {
-    throw redirect({ to: "/monitoring" });
+    throw redirect({ to: user.hotelId ? "/monitoring" : "/hotels" });
   }
 }

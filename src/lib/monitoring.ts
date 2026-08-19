@@ -23,27 +23,31 @@ const presenceFilterSchema = z.object({
 export const listPresenceFn = createServerFn({ method: "GET" })
   .validator((input) => presenceFilterSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
+    const { requireHotelSession } = await import("@/lib/tenant");
     const { ensureAccessLogPoller } = await import("@/server/sync");
     const { listPresence, listRecentAccessEvents, countFilteredAccessEvents, backfillAccessEventGuests } =
       await import("@/db/events");
+    const { hotelId } = await requireHotelSession();
     ensureAccessLogPoller();
     await backfillAccessEventGuests().catch(() => undefined);
     const pageSize = 10;
     const eventTotal = await countFilteredAccessEvents({
-      year: data.year,
-      month: data.month,
-      day: data.day,
+      hotelId,
+      year: data.year ?? null,
+      month: data.month ?? null,
+      day: data.day ?? null,
     });
     const pageCount = Math.max(1, Math.ceil(eventTotal / pageSize));
     const page = Math.min(data.page ?? 1, pageCount);
     return {
-      people: await listPresence(),
+      people: await listPresence(hotelId),
       events: await listRecentAccessEvents({
+        hotelId,
         limit: pageSize,
         page,
-        year: data.year,
-        month: data.month,
-        day: data.day,
+        year: data.year ?? null,
+        month: data.month ?? null,
+        day: data.day ?? null,
       }),
       eventTotal,
       eventPage: page,
@@ -53,14 +57,16 @@ export const listPresenceFn = createServerFn({ method: "GET" })
   });
 
 export const getOverviewFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireHotelSession } = await import("@/lib/tenant");
   const { countDevices } = await import("@/db/devices");
   const { countPeople } = await import("@/db/people");
   const { countAccessEvents, listPresence } = await import("@/db/events");
-  const presence = await listPresence();
+  const { hotelId } = await requireHotelSession();
+  const presence = await listPresence(hotelId);
   return {
-    devices: await countDevices(),
-    people: await countPeople(),
-    events: await countAccessEvents(),
+    devices: await countDevices(hotelId),
+    people: await countPeople(hotelId),
+    events: await countAccessEvents(hotelId),
     active: presence.filter((item) => item.status === "Active").length,
   };
 });

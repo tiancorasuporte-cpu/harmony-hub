@@ -21,7 +21,7 @@ function UsersPage() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(loaded.ok ? null : loaded.error);
+  const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [role, setRole] = useState<"admin" | "porteiro">("porteiro");
   const users = loaded.ok ? loaded.users : [];

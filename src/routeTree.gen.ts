@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GestaoRouteImport } from './routes/gestao'
 import { Route as MonitoringRouteImport } from './routes/monitoring'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -18,6 +19,7 @@ import { Route as UsersRouteImport } from './routes/users'
 import { Route as DevicesIndexRouteImport } from './routes/devices/index'
 import { Route as DevicesIdRouteImport } from './routes/devices/$id'
 import { Route as DevicesRegisterRouteImport } from './routes/devices/register'
+import { Route as HotelsIndexRouteImport } from './routes/hotels/index'
 import { Route as PeopleIndexRouteImport } from './routes/people/index'
 import { Route as PeopleIdRouteImport } from './routes/people/$id'
 import { Route as PeopleRegisterRouteImport } from './routes/people/register'
@@ -27,6 +29,11 @@ import { Route as StaffRegisterRouteImport } from './routes/staff/register'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GestaoRoute = GestaoRouteImport.update({
+  id: '/gestao',
+  path: '/gestao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MonitoringRoute = MonitoringRouteImport.update({
@@ -69,6 +76,11 @@ const DevicesRegisterRoute = DevicesRegisterRouteImport.update({
   path: '/devices/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HotelsIndexRoute = HotelsIndexRouteImport.update({
+  id: '/hotels/',
+  path: '/hotels/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PeopleIndexRoute = PeopleIndexRouteImport.update({
   id: '/people/',
   path: '/people/',
@@ -97,6 +109,7 @@ const StaffRegisterRoute = StaffRegisterRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/gestao': typeof GestaoRoute
   '/monitoring': typeof MonitoringRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
@@ -108,11 +121,13 @@ export interface FileRoutesByFullPath {
   '/people/register': typeof PeopleRegisterRoute
   '/staff/register': typeof StaffRegisterRoute
   '/devices/': typeof DevicesIndexRoute
+  '/hotels/': typeof HotelsIndexRoute
   '/people/': typeof PeopleIndexRoute
   '/staff/': typeof StaffIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/gestao': typeof GestaoRoute
   '/monitoring': typeof MonitoringRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
@@ -124,12 +139,14 @@ export interface FileRoutesByTo {
   '/people/register': typeof PeopleRegisterRoute
   '/staff/register': typeof StaffRegisterRoute
   '/devices': typeof DevicesIndexRoute
+  '/hotels': typeof HotelsIndexRoute
   '/people': typeof PeopleIndexRoute
   '/staff': typeof StaffIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/gestao': typeof GestaoRoute
   '/monitoring': typeof MonitoringRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
@@ -141,6 +158,7 @@ export interface FileRoutesById {
   '/people/register': typeof PeopleRegisterRoute
   '/staff/register': typeof StaffRegisterRoute
   '/devices/': typeof DevicesIndexRoute
+  '/hotels/': typeof HotelsIndexRoute
   '/people/': typeof PeopleIndexRoute
   '/staff/': typeof StaffIndexRoute
 }
@@ -148,6 +166,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/gestao'
     | '/monitoring'
     | '/profile'
     | '/settings'
@@ -159,11 +178,13 @@ export interface FileRouteTypes {
     | '/people/register'
     | '/staff/register'
     | '/devices/'
+    | '/hotels/'
     | '/people/'
     | '/staff/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/gestao'
     | '/monitoring'
     | '/profile'
     | '/settings'
@@ -175,11 +196,13 @@ export interface FileRouteTypes {
     | '/people/register'
     | '/staff/register'
     | '/devices'
+    | '/hotels'
     | '/people'
     | '/staff'
   id:
     | '__root__'
     | '/'
+    | '/gestao'
     | '/monitoring'
     | '/profile'
     | '/settings'
@@ -191,12 +214,14 @@ export interface FileRouteTypes {
     | '/people/register'
     | '/staff/register'
     | '/devices/'
+    | '/hotels/'
     | '/people/'
     | '/staff/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GestaoRoute: typeof GestaoRoute
   MonitoringRoute: typeof MonitoringRoute
   ProfileRoute: typeof ProfileRoute
   SettingsRoute: typeof SettingsRoute
@@ -208,6 +233,7 @@ export interface RootRouteChildren {
   PeopleRegisterRoute: typeof PeopleRegisterRoute
   StaffRegisterRoute: typeof StaffRegisterRoute
   DevicesIndexRoute: typeof DevicesIndexRoute
+  HotelsIndexRoute: typeof HotelsIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
   StaffIndexRoute: typeof StaffIndexRoute
 }
@@ -219,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gestao': {
+      id: '/gestao'
+      path: '/gestao'
+      fullPath: '/gestao'
+      preLoaderRoute: typeof GestaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/monitoring': {
@@ -277,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevicesRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hotels/': {
+      id: '/hotels/'
+      path: '/hotels'
+      fullPath: '/hotels/'
+      preLoaderRoute: typeof HotelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/people/': {
       id: '/people/'
       path: '/people'
@@ -317,6 +357,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GestaoRoute: GestaoRoute,
   MonitoringRoute: MonitoringRoute,
   ProfileRoute: ProfileRoute,
   SettingsRoute: SettingsRoute,
@@ -328,6 +369,7 @@ const rootRouteChildren: RootRouteChildren = {
   PeopleRegisterRoute: PeopleRegisterRoute,
   StaffRegisterRoute: StaffRegisterRoute,
   DevicesIndexRoute: DevicesIndexRoute,
+  HotelsIndexRoute: HotelsIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,
   StaffIndexRoute: StaffIndexRoute,
 }

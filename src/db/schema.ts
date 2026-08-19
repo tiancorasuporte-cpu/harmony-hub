@@ -3,7 +3,7 @@ import { hash } from "bcryptjs";
 
 import { getSql } from "./client";
 
-export type AppRole = "admin" | "porteiro";
+export type AppRole = "superadmin" | "admin" | "porteiro";
 
 export type AppUser = {
   id: number;
@@ -11,6 +11,8 @@ export type AppUser = {
   name: string;
   role: AppRole;
   active: boolean;
+  hotelId: number | null;
+  hotelName: string | null;
 };
 
 export type AppUserRow = AppUser & {
@@ -98,6 +100,11 @@ async function ensureBigint(table: string, column: string) {
   if (type !== "integer") return;
   const sql = getSql();
   await sql.unsafe(`alter table ${table} alter column ${column} type bigint`);
+}
+
+async function dropConstraint(table: string, name: string) {
+  const sql = getSql();
+  await sql.unsafe(`alter table ${table} drop constraint if exists ${name}`);
 }
 
 export async function ensureSchema() {
@@ -242,19 +249,107 @@ export async function ensureSchema() {
   await ensureBigint("device_people", "control_id_user_id");
   await ensureBigint("access_events", "control_id_user_id");
 
+  await ensureHotels(sql);
+
   const username = process.env["APP_ADMIN_USERNAME"] ?? "admin";
   const password = process.env["APP_ADMIN_PASSWORD"] ?? "admin";
   const name = process.env["APP_ADMIN_NAME"] ?? "Administrator";
 
-  const existing = await sql<{ id: number }[]>`
-    select id from users where username = ${username} limit 1
+  const principal = await sql<{ id: number }[]>`
+    select id from hotels order by id limit 1
   `;
-
-  if (!existing[0]) {
-    const passwordHash = await hash(password, 10);
-    await sql`
-      insert into users (username, password_hash, name, role)
-      values (${username}, ${passwordHash}, ${name}, 'admin')
+  const hotelId = principal[0]?.id;
+  if (hotelId) {
+    const existing = await sql<{ id: number }[]>`
+      select id from users
+      where username = ${username} and hotel_id = ${hotelId}
+      limit 1
     `;
+    if (!existing[0]) {
+      const passwordHash = await hash(password, 10);
+      await sql`
+        insert into users (username, password_hash, name, role, hotel_id)
+        values (${username}, ${passwordHash}, ${name}, 'admin', ${hotelId})
+      `;
+    }
+  }
+
+  const superUsername = process.env["APP_SUPERADMIN_USERNAME"] ?? "superadmin";
+  const superPassword = process.env["APP_SUPERADMIN_PASSWORD"] ?? "ancora";
+  const superName = process.env["APP_SUPERADMIN_NAME"] ?? "Âncora";
+  const superExisting = await sql<{ id: number }[]>`
+    select id from users where username = ${superUsername} and hotel_id is null limit 1
+  `;
+  if (!superExisting[0]) {
+    const passwordHash = await hash(superPassword, 10);
+    await sql`
+      insert into users (username, password_hash, name, role, hotel_id)
+      values (${superUsername}, ${passwordHash}, ${superName}, 'superadmin', null)
+    `;
+  }
+}
+
+async function ensureHotels(sql: Awaited<ReturnType<typeof getSql>>) {
+  if (!(await tableExists("hotels"))) {
+    await sql`
+      create table hotels (
+        id serial primary key,
+        name varchar(120) not null,
+        slug varchar(64) not null,
+        active boolean not null default true,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        unique (slug)
+      )
+    `;
+  }
+
+  let principal = await sql<{ id: number }[]>`select id from hotels order by id limit 1`;
+  if (!principal[0]) {
+    principal = await sql<{ id: number }[]>`
+      insert into hotels (name, slug, active)
+      values ('Hotel principal', 'principal', true)
+      returning id
+    `;
+  }
+  const hotelId = principal[0]!.id;
+
+  await addColumn("users", "hotel_id", "integer references hotels(id)");
+  await addColumn("guests", "hotel_id", "integer references hotels(id)");
+  await addColumn("devices", "hotel_id", "integer references hotels(id)");
+
+  await sql`update users set hotel_id = ${hotelId} where hotel_id is null and role <> 'superadmin'`;
+  await sql`update guests set hotel_id = ${hotelId} where hotel_id is null`;
+  await sql`update devices set hotel_id = ${hotelId} where hotel_id is null`;
+
+  try {
+    await sql.unsafe("alter table guests alter column hotel_id set not null");
+  } catch {
+    // Column may already be required.
+  }
+  try {
+    await sql.unsafe("alter table devices alter column hotel_id set not null");
+  } catch {
+    // Column may already be required.
+  }
+
+  await dropConstraint("users", "users_username_key");
+  await dropConstraint("devices", "devices_ip_port_key");
+
+  if (!(await indexExists("users_hotel_username_idx"))) {
+    await sql.unsafe(
+      "create unique index users_hotel_username_idx on users (hotel_id, username) where hotel_id is not null",
+    );
+  }
+  if (!(await indexExists("users_superadmin_username_idx"))) {
+    await sql.unsafe(
+      "create unique index users_superadmin_username_idx on users (username) where hotel_id is null",
+    );
+  }
+  if (!(await indexExists("devices_hotel_ip_port_idx"))) {
+    await sql.unsafe("create unique index devices_hotel_ip_port_idx on devices (hotel_id, ip, port)");
+  }
+  if (!(await indexExists("guests_hotel_id_idx"))) {
+    await sql.unsafe("create index guests_hotel_id_idx on guests (hotel_id)");
   }
 }

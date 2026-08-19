@@ -17,38 +17,27 @@ const profileSchema = z.object({
   password: z.string().optional(),
 });
 
-async function adminFromSession() {
-  const { getAuthSession } = await import("@/server/session");
-  const { findUserById } = await import("@/db/users");
-  const session = await getAuthSession();
-  const userId = session.data.userId;
-  if (typeof userId !== "number") return null;
-  const user = await findUserById(userId);
-  if (!user || user.role !== "admin") return null;
-  return user;
-}
-
 export const listUsersFn = createServerFn({ method: "GET" }).handler(async () => {
-  const admin = await adminFromSession();
-  if (!admin) return { ok: false as const, error: "Apenas administradores podem ver usuários." };
+  const { requireHotelAdminSession } = await import("@/lib/tenant");
   const { listUsers } = await import("@/db/users");
-  return { ok: true as const, users: await listUsers() };
+  const { hotelId } = await requireHotelAdminSession();
+  return { ok: true as const, users: await listUsers(hotelId) };
 });
 
 export const createUserFn = createServerFn({ method: "POST" })
   .validator(createSchema)
   .handler(async ({ data }) => {
-    const admin = await adminFromSession();
-    if (!admin) return { ok: false as const, error: "Apenas administradores podem criar usuários." };
+    const { requireHotelAdminSession } = await import("@/lib/tenant");
     const { createUser, findUserByUsername } = await import("@/db/users");
-    const existing = await findUserByUsername(data.username);
-    if (existing) return { ok: false as const, error: "Já existe um usuário com este login." };
+    const { hotelId } = await requireHotelAdminSession();
+    const existing = await findUserByUsername(data.username, hotelId);
+    if (existing) return { ok: false as const, error: "Já existe um usuário com este login neste hotel." };
     try {
-      const user = await createUser(data);
+      const user = await createUser({ ...data, hotelId });
       return { ok: true as const, user };
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-      if (code === "23505") return { ok: false as const, error: "Já existe um usuário com este login." };
+      if (code === "23505") return { ok: false as const, error: "Já existe um usuário com este login neste hotel." };
       return {
         ok: false as const,
         error: error instanceof Error ? error.message : "Não foi possível criar o usuário",
@@ -59,15 +48,15 @@ export const createUserFn = createServerFn({ method: "POST" })
 export const setUserActiveFn = createServerFn({ method: "POST" })
   .validator(idSchema.extend({ active: z.boolean() }))
   .handler(async ({ data }) => {
-    const admin = await adminFromSession();
-    if (!admin) return { ok: false as const, error: "Apenas administradores." };
+    const { requireHotelAdminSession } = await import("@/lib/tenant");
+    const { hotelId, user: admin } = await requireHotelAdminSession();
     if (data.id === admin.id && !data.active) {
       return { ok: false as const, error: "Você não pode desativar o próprio usuário." };
     }
     const { countActiveAdmins, findUserById, setUserActive } = await import("@/db/users");
     const target = await findUserById(data.id, { includeInactive: true });
-    if (!target) return { ok: false as const, error: "Usuário não encontrado." };
-    if (target.role === "admin" && !data.active && (await countActiveAdmins()) <= 1) {
+    if (!target || target.hotelId !== hotelId) return { ok: false as const, error: "Usuário não encontrado." };
+    if (target.role === "admin" && !data.active && (await countActiveAdmins(hotelId)) <= 1) {
       return { ok: false as const, error: "É preciso manter pelo menos um administrador ativo." };
     }
     await setUserActive(data.id, data.active);

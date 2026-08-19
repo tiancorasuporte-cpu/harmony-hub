@@ -35,6 +35,15 @@ const idSchema = z.object({
   id: z.number().int().positive(),
 });
 
+async function hotelDevice(id: number) {
+  const { requireHotelAdminSession } = await import("@/lib/tenant");
+  const { getDeviceById } = await import("@/db/devices");
+  const { hotelId } = await requireHotelAdminSession();
+  const device = await getDeviceById(id);
+  if (!device || device.hotel_id !== hotelId) return { device: undefined, hotelId };
+  return { device, hotelId };
+}
+
 function asEndpoint(device: {
   ip: string;
   port: number;
@@ -84,9 +93,11 @@ function toView(
 }
 
 export const listDevicesFn = createServerFn({ method: "GET" }).handler(async (): Promise<DeviceView[]> => {
+  const { requireHotelAdminSession } = await import("@/lib/tenant");
   const { listDevices, updateDeviceProbe } = await import("@/db/devices");
   const { systemInformation } = await import("@/server/control-id");
-  const rows = await listDevices();
+  const { hotelId } = await requireHotelAdminSession();
+  const rows = await listDevices(hotelId);
 
   return Promise.all(
     rows.map(async (device) => {
@@ -121,10 +132,12 @@ export const listDevicesFn = createServerFn({ method: "GET" }).handler(async ():
 export const registerDeviceFn = createServerFn({ method: "POST" })
   .validator(registerSchema)
   .handler(async ({ data }) => {
+    const { requireHotelAdminSession } = await import("@/lib/tenant");
     const { insertDevice, updateDeviceProbe, markDeviceSynced } = await import("@/db/devices");
     const { systemInformation, ensureAccessPolicy, ControlIdError } = await import("@/server/control-id");
     const { saveSyncCursor } = await import("@/db/events");
     const { syncDevice } = await import("@/server/sync");
+    const { hotelId } = await requireHotelAdminSession();
 
     const endpoint = {
       ip: data.ip,
@@ -143,6 +156,7 @@ export const registerDeviceFn = createServerFn({ method: "POST" })
         port: data.port,
         username: data.username,
         password: data.password,
+        hotelId,
       });
       await updateDeviceProbe(device.id, {
         serial: info.serial ?? null,
@@ -174,9 +188,8 @@ export const registerDeviceFn = createServerFn({ method: "POST" })
 export const restartDeviceFn = createServerFn({ method: "POST" })
   .validator(idSchema)
   .handler(async ({ data }) => {
-    const { getDeviceById } = await import("@/db/devices");
     const { rebootDevice } = await import("@/server/control-id");
-    const device = await getDeviceById(data.id);
+    const { device } = await hotelDevice(data.id);
     if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
     try {
       await rebootDevice(asEndpoint(device));
@@ -189,9 +202,8 @@ export const restartDeviceFn = createServerFn({ method: "POST" })
 export const openDeviceDoorFn = createServerFn({ method: "POST" })
   .validator(idSchema)
   .handler(async ({ data }) => {
-    const { getDeviceById } = await import("@/db/devices");
     const { openDoor } = await import("@/server/control-id");
-    const device = await getDeviceById(data.id);
+    const { device } = await hotelDevice(data.id);
     if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
     try {
       await openDoor(asEndpoint(device));
@@ -209,8 +221,10 @@ export const syncDeviceFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { markDeviceSynced, updateDeviceProbe } = await import("@/db/devices");
     const { syncDevice } = await import("@/server/sync");
+    const { device } = await hotelDevice(data.id);
+    if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
     try {
-      const result = await syncDevice(data.id);
+      const result = await syncDevice(device.id);
       await markDeviceSynced(data.id);
       return { ok: true as const, ...result };
     } catch (error) {
@@ -223,8 +237,7 @@ export const syncDeviceFn = createServerFn({ method: "POST" })
 export const getDeviceFn = createServerFn({ method: "GET" })
   .validator(idSchema)
   .handler(async ({ data }) => {
-    const { getDeviceById } = await import("@/db/devices");
-    const device = await getDeviceById(data.id);
+    const { device } = await hotelDevice(data.id);
     if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
     return {
       ok: true as const,
@@ -248,11 +261,11 @@ const updateSchema = registerSchema.omit({ password: true }).extend({
 export const updateDeviceFn = createServerFn({ method: "POST" })
   .validator(updateSchema)
   .handler(async ({ data }) => {
-    const { getDeviceById, updateDevice, updateDeviceProbe, markDeviceSynced } = await import("@/db/devices");
+    const { updateDevice, updateDeviceProbe, markDeviceSynced } = await import("@/db/devices");
     const { systemInformation, ensureAccessPolicy, ControlIdError } = await import("@/server/control-id");
     const { saveSyncCursor } = await import("@/db/events");
 
-    const current = await getDeviceById(data.id);
+    const { device: current } = await hotelDevice(data.id);
     if (!current) return { ok: false as const, error: "Equipamento não encontrado" };
 
     const username = data.username || current.username;
@@ -299,8 +312,8 @@ export const updateDeviceFn = createServerFn({ method: "POST" })
 export const deleteDeviceFn = createServerFn({ method: "POST" })
   .validator(idSchema)
   .handler(async ({ data }) => {
-    const { getDeviceById, deleteDevice } = await import("@/db/devices");
-    const device = await getDeviceById(data.id);
+    const { deleteDevice } = await import("@/db/devices");
+    const { device } = await hotelDevice(data.id);
     if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
     try {
       await deleteDevice(data.id);

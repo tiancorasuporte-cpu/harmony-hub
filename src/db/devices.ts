@@ -18,6 +18,7 @@ export type DeviceRow = {
   last_seen_at: Date | null;
   last_sync_at: Date | null;
   last_error: string | null;
+  hotel_id: number;
   created_at: Date;
   updated_at: Date;
 };
@@ -31,9 +32,20 @@ export type NewDevice = {
   useHttps?: boolean;
   username: string;
   password: string;
+  hotelId: number;
 };
 
-export async function listDevices(): Promise<DeviceRow[]> {
+export async function listDevices(hotelId: number): Promise<DeviceRow[]> {
+  const db = await getDb();
+  return db<DeviceRow[]>`
+    select *
+    from devices
+    where hotel_id = ${hotelId}
+    order by name
+  `;
+}
+
+export async function listAllDevices(): Promise<DeviceRow[]> {
   const db = await getDb();
   return db<DeviceRow[]>`
     select *
@@ -53,7 +65,7 @@ export async function getDeviceById(id: number): Promise<DeviceRow | undefined> 
 export async function insertDevice(input: NewDevice): Promise<DeviceRow> {
   const db = await getDb();
   const rows = await db<DeviceRow[]>`
-    insert into devices (name, model, location, ip, port, use_https, username, password)
+    insert into devices (name, model, location, ip, port, use_https, username, password, hotel_id)
     values (
       ${input.name},
       ${input.model},
@@ -62,7 +74,8 @@ export async function insertDevice(input: NewDevice): Promise<DeviceRow> {
       ${input.port},
       ${input.useHttps ?? false},
       ${input.username},
-      ${input.password}
+      ${input.password},
+      ${input.hotelId}
     )
     returning *
   `;
@@ -104,9 +117,11 @@ export async function markDeviceSynced(id: number) {
   `;
 }
 
-export async function countDevices() {
+export async function countDevices(hotelId: number) {
   const db = await getDb();
-  const rows = await db<{ count: number }[]>`select count(*)::int as count from devices`;
+  const rows = await db<{ count: number }[]>`
+    select count(*)::int as count from devices where hotel_id = ${hotelId}
+  `;
   return rows[0]?.count ?? 0;
 }
 

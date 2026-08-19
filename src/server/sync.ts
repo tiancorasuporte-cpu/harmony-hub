@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import { getDeviceById, listDevices, type DeviceRow } from "@/db/devices";
+import { getDeviceById, listAllDevices, listDevices, type DeviceRow } from "@/db/devices";
 import { getSyncCursor, insertAccessEvents, saveSyncCursor, backfillAccessEventGuests } from "@/db/events";
 import {
   findPersonIdByDeviceUser,
@@ -45,7 +45,7 @@ function asBuffer(photo: Uint8Array | Buffer | null): Buffer | null {
 }
 
 async function targetDevicesFor(person: PersonRow) {
-  const all = await listDevices();
+  const all = await listDevices(person.hotel_id);
   if (person.target_all !== false) return all;
   const ids = await listGuestDeviceIds(person.id);
   return all.filter((device) => ids.includes(device.id));
@@ -60,6 +60,7 @@ function userTimes(person: PersonRow) {
 }
 
 export async function enrollPersonOnDevice(person: PersonRow, device: DeviceRow) {
+  if (device.hotel_id !== person.hotel_id) throw new Error("Equipamento de outro hotel");
   const endpoint = asEndpoint(device);
   const policy = await ensureAccessPolicy(endpoint);
   await saveSyncCursor(device.id, { groupId: policy.groupId, ruleId: policy.ruleId });
@@ -108,7 +109,9 @@ export async function revokePersonOnDevice(person: PersonRow, device: DeviceRow)
   if (mappedId) ids.add(mappedId);
 
   const matches = await findUsersByRegistration(endpoint, person.cpf);
-  for (const user of matches) ids.add(user.id);
+  for (const user of matches) {
+    if (user.id) ids.add(user.id);
+  }
 
   for (const userId of ids) {
     await destroyUser(endpoint, userId).catch(() => undefined);
@@ -125,7 +128,7 @@ export async function revokePersonOnDevice(person: PersonRow, device: DeviceRow)
 export async function removePersonEverywhere(person: PersonRow) {
   const devices = await targetDevicesFor(person);
   const mappings = await listDevicePeopleByGuest(person.id);
-  const extra = (await listDevices()).filter((device) =>
+  const extra = (await listDevices(person.hotel_id)).filter((device) =>
     mappings.some((item) => item.device_id === device.id),
   );
   const unique = new Map<number, DeviceRow>();
@@ -150,7 +153,7 @@ export async function removePersonFromDevice(person: PersonRow, deviceId: number
   if (!device) throw new Error("Equipamento não encontrado");
   await revokePersonOnDevice(person, device);
   await deleteDevicePersonMapping(deviceId, person.id);
-  const all = await listDevices();
+  const all = await listDevices(person.hotel_id);
   if (person.target_all !== false) {
     await setPersonTargetAll(person.id, false);
     await setGuestDevices(
@@ -166,7 +169,7 @@ export async function removePersonFromDevice(person: PersonRow, deviceId: number
 export async function revokePersonFromUntargeted(person: PersonRow) {
   const targets = await targetDevicesFor(person);
   const mappings = await listDevicePeopleByGuest(person.id);
-  const all = await listDevices();
+  const all = await listDevices(person.hotel_id);
   for (const mapping of mappings) {
     if (targets.some((device) => device.id === mapping.device_id)) continue;
     const device = all.find((item) => item.id === mapping.device_id);
@@ -208,7 +211,7 @@ export async function processStayWindows() {
       } else if (isCheckedOut(person.check_out)) {
         const mappings = await listDevicePeopleByGuest(person.id);
         const mappedDevices = mappings.length
-          ? (await listDevices()).filter((device) => mappings.some((item) => item.device_id === device.id))
+          ? (await listDevices(person.hotel_id)).filter((device) => mappings.some((item) => item.device_id === device.id))
           : devices;
         for (const device of mappedDevices) {
           await revokePersonOnDevice(person, device);
@@ -227,7 +230,7 @@ export async function syncDevice(deviceId: number) {
   const device = await getDeviceById(deviceId);
   if (!device) throw new Error("Equipamento não encontrado");
 
-  const people = await listPeopleForSync();
+  const people = await listPeopleForSync(device.hotel_id);
   let users = 0;
   let faces = 0;
   const errors: string[] = [];
@@ -253,11 +256,10 @@ export async function syncDevice(deviceId: number) {
 }
 
 export async function pullAccessLogs(deviceId: number, endpoint?: DeviceEndpoint) {
-  const device = endpoint ? null : await getDeviceById(deviceId);
-  if (!endpoint) {
-    if (!device) return 0;
-  }
-  const conn = endpoint ?? asEndpoint(device!);
+  const row = await getDeviceById(deviceId);
+  if (!row) return 0;
+  const conn = endpoint ?? asEndpoint(row);
+  const connHotelId = row.hotel_id;
   const cursor = await getSyncCursor(deviceId);
   const revisitFrom = cursor.lastAccessLogId > 0 ? Math.max(0, cursor.lastAccessLogId - 250) : 0;
   const logs = await loadAccessLogs(conn, revisitFrom);
@@ -286,7 +288,9 @@ export async function pullAccessLogs(deviceId: number, endpoint?: DeviceEndpoint
     if (digits.length >= 5) {
       const cached = byRegistration.get(digits);
       if (cached) return cached;
-      const found = await findPersonIdByRegistration(digits);
+      const found = connHotelId
+        ? await findPersonIdByRegistration(digits, connHotelId)
+        : null;
       if (found) {
         byRegistration.set(digits, found);
         return found;
@@ -323,7 +327,7 @@ export async function pullAccessLogs(deviceId: number, endpoint?: DeviceEndpoint
 }
 
 export async function pullAllDeviceLogs() {
-  const devices = await listDevices();
+  const devices = await listAllDevices();
   const counts = await Promise.all(
     devices.map((device) => pullAccessLogs(device.id, asEndpoint(device)).catch(() => 0)),
   );

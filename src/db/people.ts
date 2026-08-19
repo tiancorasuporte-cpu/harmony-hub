@@ -10,6 +10,7 @@ export type PersonRow = {
   check_in: Date | null;
   check_out: Date | null;
   control_id_user_id: number | null;
+  hotel_id: number;
   kind: string;
   department: string | null;
   document_type: string | null;
@@ -45,6 +46,7 @@ export type NewPerson = {
   cpf: string;
   room?: string | null;
   kind: PersonKind;
+  hotelId: number;
   department?: string | null;
   documentType?: string;
   roomType?: string | null;
@@ -63,7 +65,7 @@ function toIso(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
 }
 
-export async function listPeople(): Promise<PersonPublic[]> {
+export async function listPeople(hotelId: number): Promise<PersonPublic[]> {
   const db = await getDb();
   const rows = await db<
     (Omit<PersonRow, "photo"> & {
@@ -100,7 +102,7 @@ export async function listPeople(): Promise<PersonPublic[]> {
       from device_people
       group by guest_id
     ) s on s.guest_id = g.id
-    where g.active = true
+    where g.active = true and g.hotel_id = ${hotelId}
     order by g.name
   `;
 
@@ -124,22 +126,26 @@ export async function listPeople(): Promise<PersonPublic[]> {
   }));
 }
 
-export async function getPersonById(id: number): Promise<PersonRow | undefined> {
+export async function getPersonById(id: number, hotelId?: number): Promise<PersonRow | undefined> {
   const db = await getDb();
-  const rows = await db<PersonRow[]>`
-    select * from guests where id = ${id} limit 1
-  `;
+  const rows = hotelId
+    ? await db<PersonRow[]>`select * from guests where id = ${id} and hotel_id = ${hotelId} limit 1`
+    : await db<PersonRow[]>`select * from guests where id = ${id} limit 1`;
   return rows[0];
 }
 
-export async function findPersonByCpf(cpf: string, exceptId?: number): Promise<PersonRow | undefined> {
+export async function findPersonByCpf(
+  cpf: string,
+  hotelId: number,
+  exceptId?: number,
+): Promise<PersonRow | undefined> {
   const db = await getDb();
   const rows = exceptId
     ? await db<PersonRow[]>`
-        select * from guests where cpf = ${cpf} and id <> ${exceptId} limit 1
+        select * from guests where cpf = ${cpf} and hotel_id = ${hotelId} and id <> ${exceptId} limit 1
       `
     : await db<PersonRow[]>`
-        select * from guests where cpf = ${cpf} limit 1
+        select * from guests where cpf = ${cpf} and hotel_id = ${hotelId} limit 1
       `;
   return rows[0];
 }
@@ -149,7 +155,7 @@ export async function insertPerson(input: NewPerson): Promise<PersonPublic> {
   const rows = await db<{ id: number }[]>`
     insert into guests (
       name, cpf, room, kind, department, photo, photo_mime,
-      check_in, check_out, document_type, room_type, target_all
+      check_in, check_out, document_type, room_type, target_all, hotel_id
     )
     values (
       ${input.name},
@@ -163,13 +169,14 @@ export async function insertPerson(input: NewPerson): Promise<PersonPublic> {
       ${input.checkOut ?? null},
       ${input.documentType ?? "cpf"},
       ${input.roomType ?? null},
-      ${input.targetAll ?? true}
+      ${input.targetAll ?? true},
+      ${input.hotelId}
     )
     returning id
   `;
   const id = rows[0]?.id;
   if (!id) throw new Error("Failed to insert person");
-  const people = await listPeople();
+  const people = await listPeople(input.hotelId);
   const person = people.find((item) => item.id === id);
   if (!person) throw new Error("Failed to load person");
   return person;
@@ -189,8 +196,13 @@ export async function updatePersonPhoto(id: number, photo: Buffer, mime: string)
   `;
 }
 
-export async function listPeopleForSync() {
+export async function listPeopleForSync(hotelId?: number) {
   const db = await getDb();
+  if (hotelId) {
+    return db<PersonRow[]>`
+      select * from guests where active = true and hotel_id = ${hotelId} order by id
+    `;
+  }
   return db<PersonRow[]>`
     select * from guests where active = true order by id
   `;
@@ -247,14 +259,17 @@ export async function findPersonIdByDeviceUser(deviceId: number, controlIdUserId
   `;
   if (mapped[0]) return mapped[0].guest_id;
   const guest = await db<{ id: number }[]>`
-    select id from guests
-    where active = true and control_id_user_id = ${controlIdUserId}
+    select g.id from guests g
+    join devices d on d.hotel_id = g.hotel_id
+    where g.active = true
+      and g.control_id_user_id = ${controlIdUserId}
+      and d.id = ${deviceId}
     limit 1
   `;
   return guest[0]?.id ?? null;
 }
 
-export async function findPersonIdByRegistration(registration: string) {
+export async function findPersonIdByRegistration(registration: string, hotelId: number) {
   const digits = registration.replace(/\D/g, "");
   if (digits.length < 5) return null;
   const db = await getDb();
@@ -262,17 +277,18 @@ export async function findPersonIdByRegistration(registration: string) {
     select id
     from guests
     where active = true
+      and hotel_id = ${hotelId}
       and regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') = ${digits}
     limit 1
   `;
   return rows[0]?.id ?? null;
 }
 
-export async function findPersonByRoom(room: string): Promise<PersonRow | undefined> {
+export async function findPersonByRoom(room: string, hotelId: number): Promise<PersonRow | undefined> {
   const db = await getDb();
   const rows = await db<PersonRow[]>`
     select * from guests
-    where room = ${room} and active = true
+    where room = ${room} and active = true and hotel_id = ${hotelId}
     order by check_in desc nulls last
     limit 1
   `;
@@ -362,6 +378,7 @@ export async function listPersonDeviceStatus(guestId: number): Promise<PersonDev
       (dp.guest_id is not null) as mapped
     from devices d
     left join device_people dp on dp.device_id = d.id and dp.guest_id = ${guestId}
+    where d.hotel_id = (select hotel_id from guests where id = ${guestId})
     order by d.name
   `;
   return rows.map((row) => ({
@@ -442,10 +459,10 @@ export async function deletePerson(id: number) {
   await db`delete from guests where id = ${id}`;
 }
 
-export async function countPeople() {
+export async function countPeople(hotelId: number) {
   const db = await getDb();
   const rows = await db<{ count: number }[]>`
-    select count(*)::int as count from guests where active = true
+    select count(*)::int as count from guests where active = true and hotel_id = ${hotelId}
   `;
   return rows[0]?.count ?? 0;
 }

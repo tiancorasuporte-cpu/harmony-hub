@@ -11,9 +11,9 @@ import {
 
 import { BrandLogo } from "@/components/BrandLogo";
 import { Icon } from "@/components/Icon";
-import { logoutFn } from "@/lib/auth";
+import { logoutFn, leaveHotelFn } from "@/lib/auth";
 import { APP_NAME } from "@/lib/brand";
-import { isAdmin, roleLabel } from "@/lib/require-auth";
+import { isAdmin, isSuperadmin, roleLabel } from "@/lib/require-auth";
 import { cn } from "@/lib/utils";
 import { Route as RootRoute } from "@/routes/__root";
 import type { AppUser } from "@/db/schema";
@@ -96,11 +96,12 @@ function SidebarInner({
         <div className="min-w-0">
           <p className="text-title-lg leading-tight text-primary">{APP_NAME}</p>
           <p className="text-label-md uppercase tracking-wider text-on-surface-variant">
-            Suíte de gestão
+            {user?.hotelName ?? "Suíte de gestão"}
           </p>
         </div>
       </div>
 
+      {pathname.startsWith("/hotels") ? null : (
       <div className="mb-lg space-y-sm">
         <Link
           to="/people/register"
@@ -117,10 +118,28 @@ function SidebarInner({
           Novo funcionário
         </Link>
       </div>
+      )}
 
-      <NavList pathname={pathname} user={user} onNavigate={onNavigate} />
+      {pathname.startsWith("/hotels") ? (
+        <nav className="flex-1" />
+      ) : (
+        <NavList pathname={pathname} user={user} onNavigate={onNavigate} />
+      )}
 
       <div className="mt-auto space-y-1 border-t border-outline-variant pt-lg">
+        {isSuperadmin(user) && !pathname.startsWith("/hotels") ? (
+          <Link
+            to="/hotels"
+            onClick={() => {
+              onNavigate?.();
+              void leaveHotelFn();
+            }}
+            className="flex w-full items-center gap-sm rounded-lg px-md py-sm text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
+          >
+            <Icon name="apartment" className="text-xl" />
+            <span>Hotéis</span>
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={async () => {

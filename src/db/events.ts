@@ -155,7 +155,7 @@ export async function insertAccessEvents(events: AccessEventInsert[]) {
   }
 }
 
-export async function listPresence(now = new Date()): Promise<PresencePerson[]> {
+export async function listPresence(hotelId: number, now = new Date()): Promise<PresencePerson[]> {
   const db = await getDb();
   const rows = await db<
     {
@@ -189,7 +189,7 @@ export async function listPresence(now = new Date()): Promise<PresencePerson[]> 
       order by e.occurred_at desc
       limit 1
     ) last_evt on true
-    where g.active = true
+    where g.active = true and g.hotel_id = ${hotelId}
     order by
       case when last_evt.occurred_at is null then 1 else 0 end,
       last_evt.occurred_at desc nulls last,
@@ -223,6 +223,7 @@ export async function listPresence(now = new Date()): Promise<PresencePerson[]> 
 }
 
 export type AccessEventFilter = {
+  hotelId: number;
   limit?: number;
   page?: number;
   year?: number | null;
@@ -238,14 +239,16 @@ function dateParts(filter: AccessEventFilter) {
   };
 }
 
-export async function countFilteredAccessEvents(filter: AccessEventFilter = {}) {
+export async function countFilteredAccessEvents(filter: AccessEventFilter) {
   const db = await getDb();
   const { year, month, day } = dateParts(filter);
   const rows = await db<{ count: number }[]>`
     select count(*)::int as count
     from access_events e
+    join devices d on d.id = e.device_id
     where
-      (${year}::int is null or extract(year from timezone('America/Sao_Paulo', e.occurred_at)) = ${year})
+      d.hotel_id = ${filter.hotelId}
+      and (${year}::int is null or extract(year from timezone('America/Sao_Paulo', e.occurred_at)) = ${year})
       and (${month}::int is null or extract(month from timezone('America/Sao_Paulo', e.occurred_at)) = ${month})
       and (${day}::int is null or extract(day from timezone('America/Sao_Paulo', e.occurred_at)) = ${day})
   `;
@@ -273,7 +276,7 @@ export async function backfillAccessEventGuests() {
   `;
 }
 
-export async function listRecentAccessEvents(filter: AccessEventFilter = {}) {
+export async function listRecentAccessEvents(filter: AccessEventFilter) {
   const db = await getDb();
   const limit = filter.limit ?? 10;
   const page = Math.max(1, filter.page ?? 1);
@@ -318,7 +321,8 @@ export async function listRecentAccessEvents(filter: AccessEventFilter = {}) {
       )
     )
     where
-      (${year}::int is null or extract(year from timezone('America/Sao_Paulo', e.occurred_at)) = ${year})
+      d.hotel_id = ${filter.hotelId}
+      and (${year}::int is null or extract(year from timezone('America/Sao_Paulo', e.occurred_at)) = ${year})
       and (${month}::int is null or extract(month from timezone('America/Sao_Paulo', e.occurred_at)) = ${month})
       and (${day}::int is null or extract(day from timezone('America/Sao_Paulo', e.occurred_at)) = ${day})
     order by e.occurred_at desc, e.id desc
@@ -344,8 +348,13 @@ export async function listRecentAccessEvents(filter: AccessEventFilter = {}) {
   }));
 }
 
-export async function countAccessEvents() {
+export async function countAccessEvents(hotelId: number) {
   const db = await getDb();
-  const rows = await db<{ count: number }[]>`select count(*)::int as count from access_events`;
+  const rows = await db<{ count: number }[]>`
+    select count(*)::int as count
+    from access_events e
+    join devices d on d.id = e.device_id
+    where d.hotel_id = ${hotelId}
+  `;
   return rows[0]?.count ?? 0;
 }

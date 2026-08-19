@@ -38,6 +38,14 @@ function digits(value: string) {
   return only || value.trim();
 }
 
+async function personInHotel(id: number) {
+  const { requireHotelSession } = await import("@/lib/tenant");
+  const { getPersonById } = await import("@/db/people");
+  const { hotelId } = await requireHotelSession();
+  const person = await getPersonById(id, hotelId);
+  return { person, hotelId };
+}
+
 function decodePhoto(base64?: string, mime?: string) {
   if (!base64) return { photo: null as Buffer | null, mime: null as string | null };
   const cleaned = base64.includes(",") ? base64.slice(base64.indexOf(",") + 1) : base64;
@@ -49,17 +57,21 @@ function decodePhoto(base64?: string, mime?: string) {
 }
 
 export const listPeopleFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireHotelSession } = await import("@/lib/tenant");
   const { processStayWindows } = await import("@/server/sync");
   const { listPeople } = await import("@/db/people");
+  const { hotelId } = await requireHotelSession();
   await processStayWindows().catch(() => undefined);
-  return listPeople();
+  return listPeople(hotelId);
 });
 
 export const lookupRoomFn = createServerFn({ method: "GET" })
   .validator(roomSchema)
   .handler(async ({ data }) => {
+    const { requireHotelSession } = await import("@/lib/tenant");
     const { findPersonByRoom } = await import("@/db/people");
-    const person = await findPersonByRoom(data.room);
+    const { hotelId } = await requireHotelSession();
+    const person = await findPersonByRoom(data.room, hotelId);
     if (!person) return { ok: false as const, error: "Nenhum hóspede encontrado neste quarto." };
     return {
       ok: true as const,
@@ -73,8 +85,10 @@ export const lookupRoomFn = createServerFn({ method: "GET" })
   });
 
 export const listDeviceOptionsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireHotelSession } = await import("@/lib/tenant");
   const { listDevices } = await import("@/db/devices");
-  const rows = await listDevices();
+  const { hotelId } = await requireHotelSession();
+  const rows = await listDevices(hotelId);
   return rows.map((device) => ({
     id: device.id,
     name: device.name,
@@ -85,11 +99,13 @@ export const listDeviceOptionsFn = createServerFn({ method: "GET" }).handler(asy
 export const createPersonFn = createServerFn({ method: "POST" })
   .validator(createPersonSchema)
   .handler(async ({ data }) => {
+    const { requireHotelSession } = await import("@/lib/tenant");
     const { findPersonByCpf, insertPerson, setGuestDevices } = await import("@/db/people");
     const { processStayWindows } = await import("@/server/sync");
+    const { hotelId } = await requireHotelSession();
 
     const document = data.documentType === "cpf" ? digits(data.cpf) : data.cpf.trim();
-    const existing = await findPersonByCpf(document);
+    const existing = await findPersonByCpf(document, hotelId);
     if (existing) {
       return { ok: false as const, error: "Já existe uma pessoa com este documento." };
     }
@@ -122,6 +138,7 @@ export const createPersonFn = createServerFn({ method: "POST" })
         checkIn,
         checkOut,
         targetAll: data.targetAll,
+        hotelId,
       });
 
       if (!data.targetAll) {
@@ -144,7 +161,7 @@ export const updatePersonPhotoFn = createServerFn({ method: "POST" })
     const { updatePersonPhoto, getPersonById } = await import("@/db/people");
     const { processStayWindows } = await import("@/server/sync");
 
-    const person = await getPersonById(data.id);
+    const { person } = await personInHotel(data.id);
     if (!person) return { ok: false as const, error: "Pessoa não encontrada" };
 
     try {
@@ -162,7 +179,7 @@ export const getPersonPhotoFn = createServerFn({ method: "GET" })
   .validator(idSchema)
   .handler(async ({ data }) => {
     const { getPersonById } = await import("@/db/people");
-    const person = await getPersonById(data.id);
+    const { person } = await personInHotel(data.id);
     if (!person?.photo) return null;
     const buffer = Buffer.isBuffer(person.photo) ? person.photo : Buffer.from(person.photo);
     return {
@@ -176,7 +193,7 @@ export const deletePersonFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { getPersonById, deletePerson } = await import("@/db/people");
     const { removePersonEverywhere } = await import("@/server/sync");
-    const person = await getPersonById(data.id);
+    const { person } = await personInHotel(data.id);
     if (!person) return { ok: false as const, error: "Pessoa não encontrada" };
     try {
       await removePersonEverywhere(person);
@@ -200,7 +217,7 @@ export const getPersonFn = createServerFn({ method: "GET" })
   .validator(idSchema)
   .handler(async ({ data }) => {
     const { getPersonById, listGuestDeviceIds, listPersonDeviceStatus } = await import("@/db/people");
-    const person = await getPersonById(data.id);
+    const { person } = await personInHotel(data.id);
     if (!person) return { ok: false as const, error: "Pessoa não encontrada" };
     const photo = person.photo
       ? {
@@ -242,11 +259,11 @@ export const updatePersonFn = createServerFn({ method: "POST" })
     const { findPersonByCpf, getPersonById, setGuestDevices, updatePerson } = await import("@/db/people");
     const { processStayWindows, revokePersonFromUntargeted } = await import("@/server/sync");
 
-    const current = await getPersonById(data.id);
+    const { person: current, hotelId } = await personInHotel(data.id);
     if (!current) return { ok: false as const, error: "Pessoa não encontrada" };
 
     const document = data.documentType === "cpf" ? digits(data.cpf) : data.cpf.trim();
-    const existing = await findPersonByCpf(document, data.id);
+    const existing = await findPersonByCpf(document, hotelId, data.id);
     if (existing) {
       return { ok: false as const, error: "Já existe uma pessoa com este documento." };
     }
@@ -280,7 +297,7 @@ export const updatePersonFn = createServerFn({ method: "POST" })
         targetAll: data.targetAll,
       });
       await setGuestDevices(data.id, data.targetAll ? [] : data.deviceIds);
-      const person = await getPersonById(data.id);
+      const { person } = await personInHotel(data.id);
       if (person) await revokePersonFromUntargeted(person);
       const stay = await processStayWindows();
       return { ok: true as const, stay };
@@ -302,7 +319,7 @@ export const syncPersonDeviceFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { getPersonById } = await import("@/db/people");
     const { syncPersonToDevice } = await import("@/server/sync");
-    const person = await getPersonById(data.personId);
+    const { person } = await personInHotel(data.personId);
     if (!person) return { ok: false as const, error: "Pessoa não encontrada" };
     try {
       const result = await syncPersonToDevice(person, data.deviceId);
@@ -320,7 +337,7 @@ export const removePersonDeviceFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { getPersonById } = await import("@/db/people");
     const { removePersonFromDevice } = await import("@/server/sync");
-    const person = await getPersonById(data.personId);
+    const { person } = await personInHotel(data.personId);
     if (!person) return { ok: false as const, error: "Pessoa não encontrada" };
     try {
       await removePersonFromDevice(person, data.deviceId);
