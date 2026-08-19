@@ -24,7 +24,7 @@ export const Route = createFileRoute("/people/$id")({
     return getPersonFn({ data: { id } });
   },
   head: () => ({
-    meta: [{ title: "Edit Person — Âncora Access" }],
+    meta: [{ title: "Editar cadastro — Âncora Access" }],
   }),
   component: EditPerson,
 });
@@ -65,7 +65,7 @@ function EditPerson() {
 
   if (!person) {
     return (
-      <AppShell mobileTitle="Person">
+      <AppShell mobileTitle="Cadastro">
         <main className="p-margin-mobile md:p-margin-desktop">
           <p className="rounded-lg bg-error-container px-sm py-sm text-on-error-container">
             {error || "Pessoa não encontrada"}
@@ -80,8 +80,10 @@ function EditPerson() {
 
   const devices = person.devices;
 
+  const listTo = person.kind === "staff" ? "/staff" : "/people";
+
   return (
-    <AppShell mobileTitle="Edit person" searchPlaceholder="Search records...">
+    <AppShell mobileTitle="Editar cadastro" searchPlaceholder="Buscar cadastros...">
       <form
         className="flex flex-1 flex-col"
         onSubmit={async (event) => {
@@ -141,30 +143,30 @@ function EditPerson() {
         <header className="flex flex-col gap-md border-b border-outline-variant bg-background px-margin-mobile py-lg md:flex-row md:items-end md:justify-between md:px-margin-desktop">
           <div>
             <div className="mb-xs flex items-center gap-xs text-label-md text-on-surface-variant">
-              <Link to="/people" className="hover:text-primary">
-                People
+              <Link to={listTo} className="hover:text-primary">
+                {person.kind === "staff" ? "Funcionários" : "Hóspedes"}
               </Link>
               <Icon name="chevron_right" className="text-sm" />
-              <span className="font-bold text-primary">Edit</span>
+              <span className="font-bold text-primary">Editar</span>
             </div>
-            <h2 className="text-headline-lg tracking-tight text-primary">Edit {person.name}</h2>
+            <h2 className="text-headline-lg tracking-tight text-primary">Editar {person.name}</h2>
             <p className="mt-base text-body-md text-on-surface-variant">
               Altere o cadastro, sincronize ou remova a face de um Face Max.
             </p>
           </div>
           <div className="flex gap-sm">
             <Link
-              to="/people"
+              to={listTo}
               className="flex h-12 items-center justify-center rounded-lg border border-outline bg-surface-container-lowest px-md text-sm font-semibold text-primary"
             >
-              Cancel
+              Cancelar
             </Link>
             <button
               type="submit"
               disabled={pending}
               className="flex h-12 items-center justify-center rounded-lg bg-primary px-md text-sm font-semibold text-on-primary disabled:opacity-70"
             >
-              {pending ? "Saving…" : "Save changes"}
+              {pending ? "Salvando…" : "Salvar alterações"}
             </button>
           </div>
         </header>
@@ -172,15 +174,15 @@ function EditPerson() {
         <div className="grid flex-1 grid-cols-1 items-start gap-gutter p-margin-mobile md:p-margin-desktop lg:grid-cols-12">
           <div className="space-y-gutter lg:col-span-8">
             <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
-              <h3 className="mb-md text-title-lg text-primary">Personal Information</h3>
+              <h3 className="mb-md text-title-lg text-primary">Dados pessoais</h3>
               <div className="space-y-md">
                 <label className="block text-label-md text-on-surface-variant">
-                  Full Name
+                  Nome completo
                   <input name="fullName" required defaultValue={person.name} className={fieldClass} />
                 </label>
                 <div className="grid grid-cols-1 gap-md md:grid-cols-2">
                   <label className="block text-label-md text-on-surface-variant">
-                    Document Type
+                    Tipo de documento
                     <select
                       className={fieldClass}
                       value={documentType}
@@ -195,7 +197,7 @@ function EditPerson() {
                     </select>
                   </label>
                   <label className="block text-label-md text-on-surface-variant">
-                    Document Number
+                    Número do documento
                     <input
                       required
                       value={documentNumber}
@@ -212,10 +214,12 @@ function EditPerson() {
             </section>
 
             <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
-              <h3 className="mb-md text-title-lg text-primary">Access Period</h3>
+              <h3 className="mb-md text-title-lg text-primary">
+                {person.kind === "staff" ? "Vigência no Face Max" : "Período da estadia"}
+              </h3>
               <div className="grid grid-cols-1 gap-md md:grid-cols-2">
                 <label className="block text-label-md text-on-surface-variant">
-                  Check-in (data e hora)
+                  {person.kind === "staff" ? "Início (data e hora)" : "Check-in (data e hora)"}
                   <input
                     name="checkIn"
                     type="datetime-local"
@@ -225,7 +229,7 @@ function EditPerson() {
                   />
                 </label>
                 <label className="block text-label-md text-on-surface-variant">
-                  Check-out (data e hora)
+                  {person.kind === "staff" ? "Fim (data e hora)" : "Check-out (data e hora)"}
                   <input
                     name="checkOut"
                     type="datetime-local"
@@ -237,11 +241,20 @@ function EditPerson() {
               </div>
             </section>
 
+            {person.kind === "staff" ? (
+              <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
+                <h3 className="mb-md text-title-lg text-primary">Setor</h3>
+                <label className="block text-label-md text-on-surface-variant">
+                  Setor / função
+                  <input name="department" defaultValue={person.department ?? ""} className={fieldClass} />
+                </label>
+              </section>
+            ) : (
             <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
-              <h3 className="mb-md text-title-lg text-primary">Room / Access</h3>
+              <h3 className="mb-md text-title-lg text-primary">Quarto</h3>
               <div className="grid grid-cols-1 gap-md md:grid-cols-2">
                 <label className="block text-label-md text-on-surface-variant">
-                  Tipo de Quarto
+                  Tipo de quarto
                   <select name="roomType" defaultValue={person.roomType || "Simples"} className={fieldClass}>
                     {ROOM_TYPES.map((type) => (
                       <option key={type} value={type}>
@@ -251,38 +264,12 @@ function EditPerson() {
                   </select>
                 </label>
                 <label className="block text-label-md text-on-surface-variant">
-                  Número do Quarto
+                  Número do quarto
                   <input value={room} onChange={(event) => setRoom(event.target.value)} className={fieldClass} />
                 </label>
               </div>
-              <div className="mt-md grid grid-cols-1 gap-sm md:grid-cols-2">
-                {(
-                  [
-                    { id: "guest", label: "Guest (Standard)" },
-                    { id: "staff", label: "Staff (Restricted)" },
-                  ] as const
-                ).map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setKind(option.id)}
-                    className={`rounded-xl border px-md py-md text-left ${
-                      kind === option.id
-                        ? "border-secondary-container bg-secondary-fixed/30 font-bold text-primary"
-                        : "border-outline-variant text-on-surface"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              {kind === "staff" ? (
-                <label className="mt-md block text-label-md text-on-surface-variant">
-                  Department
-                  <input name="department" defaultValue={person.department ?? ""} className={fieldClass} />
-                </label>
-              ) : null}
             </section>
+            )}
 
             <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
               <h3 className="mb-md text-title-lg text-primary">Equipamentos</h3>
@@ -371,7 +358,7 @@ function EditPerson() {
 
           <aside className="space-y-gutter lg:col-span-4">
             <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
-              <h3 className="mb-md text-title-lg text-primary">Identity Verification</h3>
+              <h3 className="mb-md text-title-lg text-primary">Foto para o Face Max</h3>
               <FaceCapture
                 value={photo}
                 onChange={(value) => {
@@ -381,7 +368,7 @@ function EditPerson() {
               />
             </section>
             <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
-              <h3 className="mb-md text-title-lg text-primary">Destino da Biometria</h3>
+              <h3 className="mb-md text-title-lg text-primary">Destino da biometria</h3>
               <DeviceTargetPicker
                 devices={devices}
                 targetAll={targetAll}

@@ -17,7 +17,7 @@ export const Route = createFileRoute("/devices/$id")({
     return getDeviceFn({ data: { id } });
   },
   head: () => ({
-    meta: [{ title: "Edit Equipment — Âncora Access" }],
+    meta: [{ title: "Editar equipamento — Âncora Access" }],
   }),
   component: EditDevice,
 });
@@ -67,17 +67,17 @@ function EditDevice() {
   }
 
   return (
-    <AppShell mobileTitle="Edit equipment">
+    <AppShell mobileTitle="Editar equipamento">
       <main className="flex-1 overflow-y-auto bg-background p-margin-mobile md:p-margin-desktop">
         <div className="mb-lg">
           <div className="mb-xs flex items-center gap-xs text-label-md text-on-surface-variant">
             <Link to="/devices" className="hover:text-primary">
-              Devices
+              Equipamentos
             </Link>
             <Icon name="chevron_right" className="text-sm" />
-            <span className="font-bold text-primary">Edit</span>
+            <span className="font-bold text-primary">Editar</span>
           </div>
-          <h2 className="text-headline-lg tracking-tight text-primary">Edit Equipment</h2>
+          <h2 className="text-headline-lg tracking-tight text-primary">Editar equipamento</h2>
           <p className="mt-base text-body-md text-on-surface-variant">
             Altere rede, credenciais ou exclua o equipamento da suíte.
           </p>
@@ -122,7 +122,7 @@ function EditDevice() {
             <div className="space-y-lg p-lg">
               <div className="space-y-base">
                 <label className="block text-label-md text-on-surface-variant" htmlFor="deviceName">
-                  Device Name
+                  Nome do equipamento
                 </label>
                 <div className="relative">
                   <Icon name="badge" className="absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" />
@@ -137,7 +137,7 @@ function EditDevice() {
               </div>
               <div className="space-y-base">
                 <label className="block text-label-md text-on-surface-variant" htmlFor="location">
-                  Location
+                  Local
                 </label>
                 <div className="relative">
                   <Icon
@@ -155,7 +155,7 @@ function EditDevice() {
               <div className="grid grid-cols-1 gap-lg md:grid-cols-2">
                 <div className="space-y-base">
                   <label className="block text-label-md text-on-surface-variant" htmlFor="ipAddress">
-                    IP Address
+                    Endereço IP
                   </label>
                   <div className="relative">
                     <Icon name="lan" className="absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" />
@@ -170,7 +170,7 @@ function EditDevice() {
                 </div>
                 <div className="space-y-base">
                   <label className="block text-label-md text-on-surface-variant" htmlFor="port">
-                    Port
+                    Porta
                   </label>
                   <div className="relative">
                     <Icon
@@ -193,7 +193,7 @@ function EditDevice() {
               <div className="grid grid-cols-1 gap-lg md:grid-cols-2">
                 <div className="space-y-base">
                   <label className="block text-label-md text-on-surface-variant" htmlFor="deviceUser">
-                    Username
+                    Usuário
                   </label>
                   <div className="relative">
                     <Icon name="person" className="absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" />
@@ -207,7 +207,7 @@ function EditDevice() {
                 </div>
                 <div className="space-y-base">
                   <label className="block text-label-md text-on-surface-variant" htmlFor="devicePassword">
-                    Password
+                    Senha
                   </label>
                   <div className="relative">
                     <Icon
@@ -223,7 +223,7 @@ function EditDevice() {
                     />
                     <button
                       type="button"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                       onClick={() => setShowPassword((value) => !value)}
                       className="absolute right-sm top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary"
                     >
@@ -281,13 +281,13 @@ function EditDevice() {
               disabled={pending || deleting}
               className="flex h-12 w-full items-center justify-center rounded-lg bg-primary px-md text-sm font-semibold text-on-primary disabled:opacity-70"
             >
-              {pending ? "Saving…" : "Save changes"}
+              {pending ? "Salvando…" : "Salvar alterações"}
             </button>
             <Link
               to="/devices"
               className="flex h-12 w-full items-center justify-center rounded-lg border border-outline px-md text-sm font-semibold text-primary"
             >
-              Cancel
+              Cancelar
             </Link>
             <button
               type="button"

@@ -10,7 +10,7 @@ export const Route = createFileRoute("/settings")({
   beforeLoad: requireAuth,
   loader: () => getOverviewFn(),
   head: () => ({
-    meta: [{ title: "Settings — Âncora Access" }],
+    meta: [{ title: "Configurações — Âncora Access" }],
   }),
   component: Settings,
 });
@@ -21,21 +21,21 @@ function Settings() {
   const admin = isAdmin(user);
 
   const cards = [
-    ...(admin ? [{ label: "Devices", value: overview.devices, to: "/devices" as const }] : []),
-    { label: "People", value: overview.people, to: "/people" as const },
-    { label: "Active now", value: overview.active, to: "/monitoring" as const },
-    { label: "Access events", value: overview.events, to: "/monitoring" as const },
+    ...(admin ? [{ label: "Equipamentos", value: overview.devices, to: "/devices" as const }] : []),
+    { label: "Hóspedes", value: overview.people, to: "/people" as const },
+    { label: "Ativos agora", value: overview.active, to: "/monitoring" as const },
+    { label: "Eventos de acesso", value: overview.events, to: "/monitoring" as const },
     ...(admin ? [{ label: "Usuários", value: "→", to: "/users" as const }] : []),
   ];
 
   return (
-    <AppShell mobileTitle="Settings">
+    <AppShell mobileTitle="Configurações">
       <main className="flex-1 p-margin-mobile md:p-margin-desktop">
-        <div className="mx-auto max-w-4xl space-y-lg">
+        <div className="mx-auto max-w-[56rem] space-y-lg">
           <div>
-            <h2 className="text-headline-lg tracking-tight text-primary">Settings</h2>
+            <h2 className="text-headline-lg tracking-tight text-primary">Configurações</h2>
             <p className="mt-base text-body-lg text-on-surface-variant">
-              PostgreSQL and Control iD Face Max integration status.
+              Status da integração com PostgreSQL e Control iD Face Max.
             </p>
           </div>
 
@@ -58,8 +58,8 @@ function Settings() {
               Control iD Face Max
             </h3>
             <p className="text-body-md text-on-surface-variant">
-              Integration uses the Access Line REST API in standalone mode: login, create users,
-              enroll faces from photos, and pull access logs. Documentation:{" "}
+              A integração usa a API REST Access Line em modo standalone: login, cadastro de usuários,
+              envio de faces e leitura de logs. Documentação:{" "}
               <a
                 className="text-primary underline"
                 href="https://www.controlid.com.br/docs/access-api-pt/"

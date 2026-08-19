@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { BrandLogo } from "@/components/BrandLogo";
 import { Icon } from "@/components/Icon";
 import { redirectIfAuthenticated } from "@/lib/require-auth";
 import { loginFn } from "@/lib/auth";
@@ -9,24 +10,20 @@ export const Route = createFileRoute("/")({
   beforeLoad: redirectIfAuthenticated,
   head: () => ({
     meta: [
-      { title: "Sign in — Âncora Access" },
+      { title: "Entrar — Âncora Access" },
       {
         name: "description",
-        content:
-          "Sign in to the Âncora Access management suite to manage access devices, presence and permissions.",
+        content: "Acesse a suíte Âncora Access para gerenciar equipamentos, presença e permissões.",
       },
-      { property: "og:title", content: "Sign in — Âncora Access" },
+      { property: "og:title", content: "Entrar — Âncora Access" },
       {
         property: "og:description",
-        content: "Sign in to the Âncora Access management suite.",
+        content: "Acesse a suíte Âncora Access.",
       },
     ],
   }),
   component: Login,
 });
-
-const LOGO =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDGIYdFe-QTReeYPEhQ2FoOjOdFDNc4HSdeEdTZ6H06dDI_U4iS1Ly-uFGOgfwNRTDPj8BRVoZbCtfrGlSE99UzLikPlFSGss9K4rfu3Uk1D4chO9SFEF8Rv0SoOuPg2g4Z6rBZp3SKTWk-39yokraWTtFjZDi2K8eaUJ2vgxH3kHKwd9zhD8MgT0323eCVUWCjg42Fl1EbDy9Kckkj5JWelJjlu1CMd-MG5Bl6ZsA8y-flSmVG-kSD-PsJDFrpIrSaiRo";
 
 function Login() {
   const navigate = useNavigate();
@@ -39,17 +36,13 @@ function Login() {
       <main className="flex w-full max-w-[420px] flex-col items-center rounded-lg border border-surface-variant bg-surface-container-lowest p-xl">
         <header className="mb-xl flex w-full flex-col items-center border-b border-surface-variant pb-lg">
           <div className="mb-md flex h-[120px] w-[120px] items-center justify-center">
-            <img
-              src={LOGO}
-              alt="Âncora Access logo"
-              className="max-h-full max-w-full object-contain"
-            />
+            <BrandLogo className="max-h-full max-w-full" />
           </div>
           <h1 className="text-center text-headline-md tracking-tight text-primary">
             Âncora Access
           </h1>
           <p className="mt-base text-center text-body-md text-on-surface-variant">
-            Management Suite
+            Suíte de gestão
           </p>
         </header>
 
@@ -81,7 +74,7 @@ function Login() {
         >
           <div className="flex flex-col gap-base">
             <label className="text-label-md text-primary" htmlFor="username">
-              Username
+              Usuário
             </label>
             <div className="relative">
               <Icon
@@ -93,7 +86,7 @@ function Login() {
                 name="username"
                 type="text"
                 required
-                placeholder="Enter your username"
+                placeholder="Digite seu usuário"
                 className="input-glow w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-sm pl-xl pr-sm text-body-md text-on-surface outline-none transition-all placeholder:text-outline focus:border-primary"
               />
             </div>
@@ -101,7 +94,7 @@ function Login() {
 
           <div className="flex flex-col gap-base">
             <label className="text-label-md text-primary" htmlFor="password">
-              Password
+              Senha
             </label>
             <div className="relative">
               <Icon
@@ -113,12 +106,12 @@ function Login() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 required
-                placeholder="Enter your password"
+                placeholder="Digite sua senha"
                 className="input-glow w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-sm pl-xl pr-xl text-body-md text-on-surface outline-none transition-all placeholder:text-outline focus:border-primary"
               />
               <button
                 type="button"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute right-sm top-1/2 -translate-y-1/2 text-on-surface-variant transition-colors hover:text-primary"
               >
@@ -147,7 +140,7 @@ function Login() {
                 href="#"
                 className="text-label-md text-on-surface-variant transition-colors hover:text-primary"
               >
-                Forgot your password?
+                Esqueceu a senha?
               </a>
             </div>
           </div>

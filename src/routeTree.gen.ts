@@ -21,6 +21,8 @@ import { Route as DevicesRegisterRouteImport } from './routes/devices/register'
 import { Route as PeopleIndexRouteImport } from './routes/people/index'
 import { Route as PeopleIdRouteImport } from './routes/people/$id'
 import { Route as PeopleRegisterRouteImport } from './routes/people/register'
+import { Route as StaffIndexRouteImport } from './routes/staff/index'
+import { Route as StaffRegisterRouteImport } from './routes/staff/register'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -82,6 +84,16 @@ const PeopleRegisterRoute = PeopleRegisterRouteImport.update({
   path: '/people/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffIndexRoute = StaffIndexRouteImport.update({
+  id: '/staff/',
+  path: '/staff/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRegisterRoute = StaffRegisterRouteImport.update({
+  id: '/staff/register',
+  path: '/staff/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -94,8 +106,10 @@ export interface FileRoutesByFullPath {
   '/devices/register': typeof DevicesRegisterRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/register': typeof PeopleRegisterRoute
+  '/staff/register': typeof StaffRegisterRoute
   '/devices/': typeof DevicesIndexRoute
   '/people/': typeof PeopleIndexRoute
+  '/staff/': typeof StaffIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,8 +122,10 @@ export interface FileRoutesByTo {
   '/devices/register': typeof DevicesRegisterRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/register': typeof PeopleRegisterRoute
+  '/staff/register': typeof StaffRegisterRoute
   '/devices': typeof DevicesIndexRoute
   '/people': typeof PeopleIndexRoute
+  '/staff': typeof StaffIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,8 +139,10 @@ export interface FileRoutesById {
   '/devices/register': typeof DevicesRegisterRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/register': typeof PeopleRegisterRoute
+  '/staff/register': typeof StaffRegisterRoute
   '/devices/': typeof DevicesIndexRoute
   '/people/': typeof PeopleIndexRoute
+  '/staff/': typeof StaffIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,8 +157,10 @@ export interface FileRouteTypes {
     | '/devices/register'
     | '/people/$id'
     | '/people/register'
+    | '/staff/register'
     | '/devices/'
     | '/people/'
+    | '/staff/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,8 +173,10 @@ export interface FileRouteTypes {
     | '/devices/register'
     | '/people/$id'
     | '/people/register'
+    | '/staff/register'
     | '/devices'
     | '/people'
+    | '/staff'
   id:
     | '__root__'
     | '/'
@@ -167,8 +189,10 @@ export interface FileRouteTypes {
     | '/devices/register'
     | '/people/$id'
     | '/people/register'
+    | '/staff/register'
     | '/devices/'
     | '/people/'
+    | '/staff/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -182,8 +206,10 @@ export interface RootRouteChildren {
   DevicesRegisterRoute: typeof DevicesRegisterRoute
   PeopleIdRoute: typeof PeopleIdRoute
   PeopleRegisterRoute: typeof PeopleRegisterRoute
+  StaffRegisterRoute: typeof StaffRegisterRoute
   DevicesIndexRoute: typeof DevicesIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
+  StaffIndexRoute: typeof StaffIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +298,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/': {
+      id: '/staff/'
+      path: '/staff'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof StaffIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff/register': {
+      id: '/staff/register'
+      path: '/staff/register'
+      fullPath: '/staff/register'
+      preLoaderRoute: typeof StaffRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -286,8 +326,10 @@ const rootRouteChildren: RootRouteChildren = {
   DevicesRegisterRoute: DevicesRegisterRoute,
   PeopleIdRoute: PeopleIdRoute,
   PeopleRegisterRoute: PeopleRegisterRoute,
+  StaffRegisterRoute: StaffRegisterRoute,
   DevicesIndexRoute: DevicesIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,
+  StaffIndexRoute: StaffIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

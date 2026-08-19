@@ -11,7 +11,7 @@ export const Route = createFileRoute("/devices/register")({
   beforeLoad: requireAdmin,
   head: () => ({
     meta: [
-      { title: "Register Equipment — Âncora Access" },
+      { title: "Cadastrar equipamento — Âncora Access" },
       {
         name: "description",
         content:
@@ -46,22 +46,22 @@ function RegisterDevice() {
     "input-glow w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-sm pl-[40px] pr-md text-body-md text-on-surface outline-none transition-all focus:border-primary";
 
   return (
-    <AppShell mobileTitle="Registration">
+    <AppShell mobileTitle="Cadastro">
       <main className="flex-1 overflow-y-auto bg-background p-margin-mobile md:p-margin-desktop">
         <div className="mb-lg w-full">
           <div className="mb-xs flex items-center gap-xs text-label-md text-on-surface-variant">
             <Icon name="key_visualizer" className="text-sm" />
             <Link to="/devices" className="hover:text-primary">
-              Devices
+              Equipamentos
             </Link>
             <Icon name="chevron_right" className="text-sm" />
-            <span className="font-bold text-primary">Registration</span>
+            <span className="font-bold text-primary">Cadastro</span>
           </div>
           <h2 className="text-headline-lg tracking-tight text-primary md:text-display-lg">
-            Register Equipment
+            Cadastrar equipamento
           </h2>
           <p className="mt-base w-full text-body-lg text-on-surface-variant">
-            The suite logs into the Control iD API, stores the device, and syncs hotel guests.
+            A suíte entra na API Control iD, grava o equipamento e sincroniza hóspedes e funcionários.
           </p>
         </div>
 
@@ -100,13 +100,13 @@ function RegisterDevice() {
         >
           <section className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-elevation-1 lg:col-span-8">
             <div className="flex items-center justify-between border-b border-outline-variant bg-surface-container-low px-lg py-md">
-              <h3 className="text-title-lg text-primary">Network Configuration</h3>
+              <h3 className="text-title-lg text-primary">Rede</h3>
               <Icon name="router" className="text-on-surface-variant" />
             </div>
             <div className="space-y-lg p-lg">
               <div className="space-y-base">
                 <label className="block text-label-md text-on-surface-variant" htmlFor="deviceName">
-                  Device Name <span className="text-error">*</span>
+                  Nome do equipamento <span className="text-error">*</span>
                 </label>
                 <div className="relative">
                   <Icon
@@ -126,7 +126,7 @@ function RegisterDevice() {
 
               <div className="space-y-base">
                 <label className="block text-label-md text-on-surface-variant" htmlFor="location">
-                  Location
+                  Local
                 </label>
                 <div className="relative">
                   <Icon
@@ -146,7 +146,7 @@ function RegisterDevice() {
               <div className="grid grid-cols-1 gap-lg md:grid-cols-2">
                 <div className="space-y-base">
                   <label className="block text-label-md text-on-surface-variant" htmlFor="ipAddress">
-                    IP Address <span className="text-error">*</span>
+                    Endereço IP <span className="text-error">*</span>
                   </label>
                   <div className="relative">
                     <Icon
@@ -165,7 +165,7 @@ function RegisterDevice() {
                 </div>
                 <div className="space-y-base">
                   <label className="block text-label-md text-on-surface-variant" htmlFor="port">
-                    Communication Port
+                    Porta
                   </label>
                   <div className="relative">
                     <Icon
@@ -189,7 +189,7 @@ function RegisterDevice() {
               <div className="space-y-lg border-t border-outline-variant pt-lg">
                 <h4 className="flex items-center gap-xs text-title-lg text-primary">
                   <Icon name="admin_panel_settings" className="text-xl text-secondary" />
-                  Device Credentials
+                  Credenciais do equipamento
                 </h4>
                 <div className="grid grid-cols-1 gap-lg md:grid-cols-2">
                   <div className="space-y-base">
@@ -197,7 +197,7 @@ function RegisterDevice() {
                       className="block text-label-md text-on-surface-variant"
                       htmlFor="deviceUser"
                     >
-                      Administrator Username
+                      Usuário administrador
                     </label>
                     <div className="relative">
                       <Icon
@@ -218,7 +218,7 @@ function RegisterDevice() {
                       className="block text-label-md text-on-surface-variant"
                       htmlFor="devicePassword"
                     >
-                      Password
+                      Senha
                     </label>
                     <div className="relative">
                       <Icon
@@ -235,7 +235,7 @@ function RegisterDevice() {
                       />
                       <button
                         type="button"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                         onClick={() => setShowPassword((v) => !v)}
                         className="absolute right-sm top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary"
                       >
@@ -260,12 +260,12 @@ function RegisterDevice() {
           <aside className="space-y-gutter lg:col-span-4">
             <div className="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-elevation-1">
               <div className="flex items-center justify-between rounded-t-xl border-b border-outline-variant bg-surface-container-low px-lg py-md">
-                <h3 className="text-title-lg text-primary">Hardware Profile</h3>
+                <h3 className="text-title-lg text-primary">Modelo</h3>
                 <Icon name="memory" className="text-on-surface-variant" />
               </div>
               <div className="relative space-y-md p-lg">
                 <div className="space-y-base">
-                  <span className="block text-label-md text-on-surface-variant">Select Model</span>
+                  <span className="block text-label-md text-on-surface-variant">Selecionar modelo</span>
                   <div className="relative" ref={containerRef}>
                     <button
                       type="button"
@@ -335,7 +335,7 @@ function RegisterDevice() {
                     </div>
                     <div>
                       <h5 className="mb-1 text-label-md text-primary">
-                        {selected.name.replace("Control ID ", "")} Specifications
+                        {selected.name.replace("Control ID ", "")} — especificações
                       </h5>
                       <ul className="space-y-1 text-xs text-on-surface-variant">
                         {selected.specs.map((spec) => (
@@ -355,14 +355,14 @@ function RegisterDevice() {
                 className="flex h-12 w-full items-center justify-center gap-xs rounded-lg bg-primary px-md py-sm text-sm font-semibold text-on-primary shadow-elevation-1 transition-colors hover:bg-tertiary-container disabled:opacity-70"
               >
                 <Icon name="check_circle" className="text-sm" />
-                {pending ? "Connecting…" : "Register Equipment"}
+                {pending ? "Conectando…" : "Cadastrar equipamento"}
               </button>
               <Link
                 to="/devices"
                 className="flex h-12 w-full items-center justify-center gap-xs rounded-lg border border-outline bg-transparent px-md py-sm text-sm font-semibold text-primary transition-colors hover:bg-surface-container-low"
               >
                 <Icon name="cancel" className="text-sm" />
-                Cancel
+                Cancelar
               </Link>
             </div>
           </aside>

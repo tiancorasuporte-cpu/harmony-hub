@@ -1,0 +1,4 @@
+export const APP_NAME = "Âncora Access";
+
+export const BRAND_LOGO_URL =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDGIYdFe-QTReeYPEhQ2FoOjOdFDNc4HSdeEdTZ6H06dDI_U4iS1Ly-uFGOgfwNRTDPj8BRVoZbCtfrGlSE99UzLikPlFSGss9K4rfu3Uk1D4chO9SFEF8Rv0SoOuPg2g4Z6rBZp3SKTWk-39yokraWTtFjZDi2K8eaUJ2vgxH3kHKwd9zhD8MgT0323eCVUWCjg42Fl1EbDy9Kckkj5JWelJjlu1CMd-MG5Bl6ZsA8y-flSmVG-kSD-PsJDFrpIrSaiRo";

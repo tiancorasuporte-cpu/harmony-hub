@@ -1,8 +1,10 @@
 import "@tanstack/react-start/server-only";
 
 import { getDeviceById, listDevices, type DeviceRow } from "@/db/devices";
-import { getSyncCursor, insertAccessEvents, saveSyncCursor } from "@/db/events";
+import { getSyncCursor, insertAccessEvents, saveSyncCursor, backfillAccessEventGuests } from "@/db/events";
 import {
+  findPersonIdByDeviceUser,
+  findPersonIdByRegistration,
   listDevicePeople,
   listDevicePeopleByGuest,
   listGuestDeviceIds,
@@ -257,39 +259,103 @@ export async function pullAccessLogs(deviceId: number, endpoint?: DeviceEndpoint
   }
   const conn = endpoint ?? asEndpoint(device!);
   const cursor = await getSyncCursor(deviceId);
-  const logs = await loadAccessLogs(conn, cursor.lastAccessLogId);
-  if (logs.length === 0) return 0;
+  const revisitFrom = cursor.lastAccessLogId > 0 ? Math.max(0, cursor.lastAccessLogId - 250) : 0;
+  const logs = await loadAccessLogs(conn, revisitFrom);
+  if (logs.length === 0) {
+    await backfillAccessEventGuests();
+    return 0;
+  }
 
   const mappings = await listDevicePeople(deviceId);
-  const byUserId = new Map(mappings.map((item) => [item.control_id_user_id, item.guest_id]));
+  const byUserId = new Map(
+    mappings.map((item) => [String(Number(item.control_id_user_id)), Number(item.guest_id)]),
+  );
+  const byRegistration = new Map<string, number>();
 
-  await insertAccessEvents(
-    logs.map((log) => ({
+  async function resolveGuestId(userId: number | null, registration?: string) {
+    if (userId) {
+      const cached = byUserId.get(String(userId));
+      if (cached) return cached;
+      const found = await findPersonIdByDeviceUser(deviceId, userId);
+      if (found) {
+        byUserId.set(String(userId), found);
+        return found;
+      }
+    }
+    const digits = (registration ?? "").replace(/\D/g, "");
+    if (digits.length >= 5) {
+      const cached = byRegistration.get(digits);
+      if (cached) return cached;
+      const found = await findPersonIdByRegistration(digits);
+      if (found) {
+        byRegistration.set(digits, found);
+        return found;
+      }
+    }
+    return null;
+  }
+
+  const events = [];
+  for (const log of logs) {
+    const userId = log.user_id ? Number(log.user_id) : 0;
+    const unix = Number(log.time) || 0;
+    const occurredAt = unix > 1e12 ? new Date(unix) : new Date(unix * 1000);
+    events.push({
       deviceId,
-      guestId: log.user_id ? (byUserId.get(log.user_id) ?? null) : null,
+      guestId: await resolveGuestId(userId || null, log.registration),
       controlIdLogId: Number(log.id),
-      controlIdUserId: log.user_id ?? null,
-      eventCode: Number(log.event),
-      occurredAt: new Date((log.time || 0) * 1000),
+      controlIdUserId: userId || null,
+      eventCode: Number(log.event) || 0,
+      occurredAt,
       portalId: log.portal_id ?? null,
       confidence: log.confidence ?? null,
-    })),
-  );
+    });
+  }
 
-  const maxId = Math.max(...logs.map((log) => Number(log.id)));
-  await saveSyncCursor(deviceId, { lastAccessLogId: maxId });
+  await insertAccessEvents(events);
+  await backfillAccessEventGuests();
+
+  const maxId = Math.max(cursor.lastAccessLogId, ...logs.map((log) => Number(log.id)));
+  if (maxId > cursor.lastAccessLogId) {
+    await saveSyncCursor(deviceId, { lastAccessLogId: maxId });
+  }
   return logs.length;
 }
 
 export async function pullAllDeviceLogs() {
   const devices = await listDevices();
-  let total = 0;
-  for (const device of devices) {
-    try {
-      total += await pullAccessLogs(device.id, asEndpoint(device));
-    } catch {
-      // Device may be offline; presence still shows last stored events.
-    }
+  const counts = await Promise.all(
+    devices.map((device) => pullAccessLogs(device.id, asEndpoint(device)).catch(() => 0)),
+  );
+  return counts.reduce((sum, count) => sum + count, 0);
+}
+
+type PollerGlobal = typeof globalThis & {
+  __ancoraAccessLogPoller?: ReturnType<typeof setInterval>;
+  __ancoraAccessLogPulling?: boolean;
+  __ancoraAccessLogPullStarted?: number;
+};
+
+export async function pollAccessLogsOnce() {
+  const g = globalThis as PollerGlobal;
+  const started = g.__ancoraAccessLogPullStarted ?? 0;
+  if (g.__ancoraAccessLogPulling && Date.now() - started < 12_000) return;
+  g.__ancoraAccessLogPulling = true;
+  g.__ancoraAccessLogPullStarted = Date.now();
+  try {
+    await pullAllDeviceLogs();
+  } catch {
+    // Device or DB may be unavailable during setup.
+  } finally {
+    g.__ancoraAccessLogPulling = false;
   }
-  return total;
+}
+
+export function ensureAccessLogPoller() {
+  const g = globalThis as PollerGlobal;
+  if (g.__ancoraAccessLogPoller) return;
+  g.__ancoraAccessLogPoller = setInterval(() => {
+    void pollAccessLogsOnce();
+  }, 1000);
+  void pollAccessLogsOnce();
 }

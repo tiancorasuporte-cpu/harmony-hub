@@ -118,7 +118,7 @@ export function FaceCapture({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-sm text-on-surface-variant">
             <Icon name="person" className="text-5xl" />
             <span className="text-label-md">
-              {requesting ? "Abrindo câmera…" : "No photo captured"}
+              {requesting ? "Abrindo câmera…" : "Nenhuma foto"}
             </span>
           </div>
         ) : null}

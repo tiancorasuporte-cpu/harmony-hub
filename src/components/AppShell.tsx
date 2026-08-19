@@ -9,8 +9,10 @@ import {
   type ReactNode,
 } from "react";
 
+import { BrandLogo } from "@/components/BrandLogo";
 import { Icon } from "@/components/Icon";
 import { logoutFn } from "@/lib/auth";
+import { APP_NAME } from "@/lib/brand";
 import { isAdmin, roleLabel } from "@/lib/require-auth";
 import { cn } from "@/lib/utils";
 import { Route as RootRoute } from "@/routes/__root";
@@ -26,11 +28,12 @@ export function useShellSearch() {
 }
 
 const NAV = [
-  { to: "/people", label: "People", icon: "group", adminOnly: false },
-  { to: "/devices", label: "Devices", icon: "key_visualizer", adminOnly: true },
-  { to: "/monitoring", label: "Monitoring", icon: "monitoring", adminOnly: false },
+  { to: "/people", label: "Hóspedes", icon: "hotel", adminOnly: false },
+  { to: "/staff", label: "Funcionários", icon: "badge", adminOnly: false },
+  { to: "/devices", label: "Equipamentos", icon: "key_visualizer", adminOnly: true },
+  { to: "/monitoring", label: "Monitoramento", icon: "monitoring", adminOnly: false },
   { to: "/users", label: "Usuários", icon: "manage_accounts", adminOnly: true },
-  { to: "/settings", label: "Settings", icon: "settings", adminOnly: false },
+  { to: "/settings", label: "Configurações", icon: "settings", adminOnly: false },
 ] as const;
 
 function initials(name: string) {
@@ -89,24 +92,31 @@ function SidebarInner({
   return (
     <div className="flex h-full flex-col px-md py-xl">
       <div className="mb-xl flex items-center gap-sm px-xs">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-highest">
-          <Icon name="admin_panel_settings" filled className="text-on-surface-variant" />
-        </div>
-        <div>
-          <p className="text-headline-md font-bold leading-tight text-primary">Âncora Access</p>
+        <BrandLogo className="h-12 w-auto shrink-0" />
+        <div className="min-w-0">
+          <p className="text-title-lg leading-tight text-primary">{APP_NAME}</p>
           <p className="text-label-md uppercase tracking-wider text-on-surface-variant">
-            Management Suite
+            Suíte de gestão
           </p>
         </div>
       </div>
 
-      <Link
-        to="/people/register"
-        className="mb-lg flex w-full items-center justify-center gap-xs rounded-lg bg-secondary-container px-md py-sm text-label-md font-bold text-on-secondary-container shadow-elevation-1 transition-colors hover:bg-secondary-fixed active:scale-[0.98]"
-      >
-        <Icon name="add" className="text-sm" />
-        Add New Access
-      </Link>
+      <div className="mb-lg space-y-sm">
+        <Link
+          to="/people/register"
+          className="flex w-full items-center justify-center gap-xs rounded-lg bg-secondary-container px-md py-sm text-label-md font-bold text-on-secondary-container shadow-elevation-1 transition-colors hover:bg-secondary-fixed active:scale-[0.98]"
+        >
+          <Icon name="add" className="text-sm" />
+          Novo hóspede
+        </Link>
+        <Link
+          to="/staff/register"
+          className="flex w-full items-center justify-center gap-xs rounded-lg border border-outline-variant bg-surface-container-lowest px-md py-sm text-label-md font-bold text-primary transition-colors hover:bg-surface-container-high"
+        >
+          <Icon name="badge" className="text-sm" />
+          Novo funcionário
+        </Link>
+      </div>
 
       <NavList pathname={pathname} user={user} onNavigate={onNavigate} />
 
@@ -210,7 +220,7 @@ function ProfileMenu({ user }: { user: AppUser | null }) {
 export function AppShell({
   children,
   mobileTitle,
-  searchPlaceholder = "Search devices, IPs, or models...",
+  searchPlaceholder = "Buscar...",
 }: {
   children: ReactNode;
   mobileTitle: string;
@@ -236,7 +246,7 @@ export function AppShell({
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
           <button
-            aria-label="Close menu"
+            aria-label="Fechar menu"
             className="absolute inset-0 bg-inverse-surface/40"
             onClick={() => setOpen(false)}
           />
@@ -250,7 +260,7 @@ export function AppShell({
         <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-outline-variant bg-surface px-margin-mobile py-md md:px-margin-desktop">
           <button
             type="button"
-            aria-label="Open menu"
+            aria-label="Abrir menu"
             onClick={() => setOpen(true)}
             className="rounded-full p-2 text-on-surface transition-colors hover:bg-surface-container md:hidden"
           >

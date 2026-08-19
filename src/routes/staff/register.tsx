@@ -4,15 +4,15 @@ import { PersonRegisterForm } from "@/components/PersonRegisterForm";
 import { listDeviceOptionsFn } from "@/lib/people";
 import { requireAuth } from "@/lib/require-auth";
 
-export const Route = createFileRoute("/people/register")({
+export const Route = createFileRoute("/staff/register")({
   beforeLoad: requireAuth,
   loader: () => listDeviceOptionsFn(),
   head: () => ({
-    meta: [{ title: "Cadastrar hóspede — Âncora Access" }],
+    meta: [{ title: "Cadastrar funcionário — Âncora Access" }],
   }),
-  component: RegisterGuest,
+  component: RegisterStaff,
 });
 
-function RegisterGuest() {
-  return <PersonRegisterForm kind="guest" devices={Route.useLoaderData()} />;
+function RegisterStaff() {
+  return <PersonRegisterForm kind="staff" devices={Route.useLoaderData()} />;
 }

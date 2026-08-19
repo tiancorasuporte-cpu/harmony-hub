@@ -237,6 +237,37 @@ export async function listDevicePeople(deviceId: number) {
   `;
 }
 
+export async function findPersonIdByDeviceUser(deviceId: number, controlIdUserId: number) {
+  const db = await getDb();
+  const mapped = await db<{ guest_id: number }[]>`
+    select guest_id
+    from device_people
+    where device_id = ${deviceId} and control_id_user_id = ${controlIdUserId}
+    limit 1
+  `;
+  if (mapped[0]) return mapped[0].guest_id;
+  const guest = await db<{ id: number }[]>`
+    select id from guests
+    where active = true and control_id_user_id = ${controlIdUserId}
+    limit 1
+  `;
+  return guest[0]?.id ?? null;
+}
+
+export async function findPersonIdByRegistration(registration: string) {
+  const digits = registration.replace(/\D/g, "");
+  if (digits.length < 5) return null;
+  const db = await getDb();
+  const rows = await db<{ id: number }[]>`
+    select id
+    from guests
+    where active = true
+      and regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') = ${digits}
+    limit 1
+  `;
+  return rows[0]?.id ?? null;
+}
+
 export async function findPersonByRoom(room: string): Promise<PersonRow | undefined> {
   const db = await getDb();
   const rows = await db<PersonRow[]>`

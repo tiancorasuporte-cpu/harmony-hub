@@ -14,11 +14,10 @@ export const Route = createFileRoute("/devices/")({
   loader: () => listDevicesFn(),
   head: () => ({
     meta: [
-      { title: "Device Monitoring — Âncora Access" },
+      { title: "Equipamentos — Âncora Access" },
       {
         name: "description",
-        content:
-          "Real-time status of every access control endpoint: online state, IP address and last sync.",
+        content: "Status de cada ponto de acesso: online, IP e última sincronização.",
       },
     ],
   }),
@@ -85,21 +84,21 @@ function Devices() {
   }
 
   return (
-    <AppShell mobileTitle="Devices" searchPlaceholder="Buscar nome, IP, local ou modelo...">
+    <AppShell mobileTitle="Equipamentos" searchPlaceholder="Buscar nome, IP, local ou modelo...">
       <main className="flex-1">
         <header className="sticky top-0 z-20 border-b border-outline-variant bg-background/90 px-margin-mobile py-lg backdrop-blur-md md:px-margin-desktop">
           <div className="flex flex-col gap-md md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-headline-lg tracking-tight text-primary">Device Monitoring</h2>
+              <h2 className="text-headline-lg tracking-tight text-primary">Equipamentos</h2>
               <p className="mt-1 text-body-md text-on-surface-variant">
-                Control iD Face Max and other endpoints on the Âncora network.
+                Control iD Face Max e outros pontos na rede Âncora.
               </p>
             </div>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2">
                 <div className="flex flex-col">
                   <span className="text-label-md uppercase tracking-wider text-on-surface-variant">
-                    Total Devices
+                    Total
                   </span>
                   <span className="text-title-lg text-primary">{devices.length}</span>
                 </div>
@@ -118,7 +117,7 @@ function Devices() {
                 className="flex items-center gap-xs self-center rounded-lg bg-primary px-md py-sm text-label-md font-bold text-on-primary transition-colors hover:bg-primary-container"
               >
                 <Icon name="add" className="text-sm" />
-                Register Equipment
+                Cadastrar equipamento
               </Link>
             </div>
           </div>
@@ -145,15 +144,15 @@ function Devices() {
           {devices.length === 0 ? (
             <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-xl text-center">
               <Icon name="key_visualizer" className="mb-sm text-4xl text-on-surface-variant" />
-              <h3 className="text-title-lg text-primary">No equipment yet</h3>
+              <h3 className="text-title-lg text-primary">Nenhum equipamento</h3>
               <p className="mt-base text-body-md text-on-surface-variant">
-                Register a Control iD Face Max to start syncing guests and access events.
+                Cadastre um Control iD Face Max para sincronizar hóspedes e eventos de acesso.
               </p>
               <Link
                 to="/devices/register"
                 className="mt-md inline-flex items-center gap-xs rounded-lg bg-primary px-md py-sm text-label-md font-bold text-on-primary"
               >
-                Register Equipment
+                Cadastrar equipamento
               </Link>
             </div>
           ) : visible.length === 0 ? (
@@ -207,20 +206,20 @@ function Devices() {
 
                   <div className={`relative z-10 space-y-sm ${device.online ? "" : "opacity-70"}`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-label-md text-on-surface-variant">Location</span>
+                      <span className="text-label-md text-on-surface-variant">Local</span>
                       <span className="flex items-center gap-1 text-body-md font-medium text-primary">
                         <Icon name="location_on" className="text-sm text-on-surface-variant" />
                         {device.location || "—"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-label-md text-on-surface-variant">IP Address</span>
+                      <span className="text-label-md text-on-surface-variant">Endereço IP</span>
                       <span className="rounded bg-surface-container px-2 py-0.5 font-mono text-sm text-primary">
                         {device.ip}:{device.port}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-label-md text-on-surface-variant">Last Sync</span>
+                      <span className="text-label-md text-on-surface-variant">Última sync</span>
                       <span
                         className={
                           device.online ? "text-body-md text-primary" : "text-body-md font-medium text-error"
@@ -246,7 +245,7 @@ function Devices() {
                       params={{ id: String(device.id) }}
                       className="rounded border border-outline-variant bg-surface-container-high px-3 py-1.5 text-label-md text-primary transition-colors hover:bg-surface-container-highest"
                     >
-                      Edit
+                      Editar
                     </Link>
                     <button
                       type="button"
@@ -272,7 +271,7 @@ function Devices() {
                           onClick={() => run(device.id, "open")}
                           className="rounded border border-outline-variant bg-surface-container-high px-3 py-1.5 text-label-md text-primary transition-colors hover:bg-surface-container-highest disabled:opacity-60"
                         >
-                          Open door
+                          Abrir porta
                         </button>
                         <button
                           type="button"
@@ -280,7 +279,7 @@ function Devices() {
                           onClick={() => run(device.id, "restart")}
                           className="rounded border border-primary bg-surface-container-lowest px-3 py-1.5 text-label-md text-primary transition-colors hover:bg-surface-container-high disabled:opacity-60"
                         >
-                          Restart
+                          Reiniciar
                         </button>
                       </>
                     ) : (
@@ -291,7 +290,7 @@ function Devices() {
                         className="flex items-center gap-1 rounded bg-error px-3 py-1.5 text-label-md text-on-error transition-all hover:brightness-90"
                       >
                         <Icon name="warning" className="text-[16px]" />
-                        Retry
+                        Tentar de novo
                       </button>
                     )}
                   </div>

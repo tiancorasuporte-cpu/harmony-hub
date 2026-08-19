@@ -195,6 +195,9 @@ export const openDeviceDoorFn = createServerFn({ method: "POST" })
     if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
     try {
       await openDoor(asEndpoint(device));
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      const { pullAccessLogs } = await import("@/server/sync");
+      await pullAccessLogs(device.id).catch(() => 0);
       return { ok: true as const };
     } catch (error) {
       return { ok: false as const, error: error instanceof Error ? error.message : "Falha ao abrir a porta" };

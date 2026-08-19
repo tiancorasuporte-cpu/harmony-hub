@@ -11,22 +11,22 @@ import { isCheckedOut, isInStay } from "@/lib/stay";
 import { matchesQuery } from "@/lib/text-search";
 import { requireAuth } from "@/lib/require-auth";
 
-export const Route = createFileRoute("/people/")({
+export const Route = createFileRoute("/staff/")({
   beforeLoad: requireAuth,
   loader: () => listPeopleFn(),
   head: () => ({
-    meta: [{ title: "Hóspedes — Âncora Access" }],
+    meta: [{ title: "Funcionários — Âncora Access" }],
   }),
-  component: People,
+  component: Staff,
 });
 
 function stayLabel(checkIn: string | null, checkOut: string | null) {
-  if (isCheckedOut(checkOut)) return "Check-out feito";
-  if (isInStay(checkIn, checkOut)) return "Em estadia";
-  return "Check-in pendente";
+  if (isCheckedOut(checkOut)) return "Vigência encerrada";
+  if (isInStay(checkIn, checkOut)) return "Ativo";
+  return "Aguardando início";
 }
 
-function People() {
+function Staff() {
   const people = Route.useLoaderData();
   const router = useRouter();
   const { query } = useShellSearch();
@@ -35,29 +35,29 @@ function People() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const guests = useMemo(() => people.filter((person) => person.kind !== "staff"), [people]);
+  const staff = useMemo(() => people.filter((person) => person.kind === "staff"), [people]);
 
   const visible = useMemo(() => {
-    return guests.filter((person) => {
+    return staff.filter((person) => {
       const stay = isCheckedOut(person.checkOut)
         ? "checkedOut"
         : isInStay(person.checkIn, person.checkOut)
           ? "inStay"
           : "pending";
       if (stayFilter !== "all" && stay !== stayFilter) return false;
-      return matchesQuery(query, [person.name, person.cpf, person.room, person.roomType]);
+      return matchesQuery(query, [person.name, person.cpf, person.department]);
     });
-  }, [guests, stayFilter, query]);
+  }, [staff, stayFilter, query]);
 
   return (
-    <AppShell mobileTitle="Hóspedes" searchPlaceholder="Buscar nome, documento ou quarto...">
+    <AppShell mobileTitle="Funcionários" searchPlaceholder="Buscar nome, documento ou setor...">
       <main className="flex-1 p-margin-mobile md:p-margin-desktop">
         <div className="mx-auto max-w-[80rem] space-y-lg">
           <div className="flex flex-col gap-md md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-headline-lg tracking-tight text-primary">Hóspedes</h2>
+              <h2 className="text-headline-lg tracking-tight text-primary">Funcionários</h2>
               <p className="mt-base text-body-lg text-on-surface-variant">
-                A face vai para o Face Max no check-in e é removida no check-out.
+                Cadastro da equipe do hotel. A face fica no Face Max durante a vigência.
               </p>
             </div>
             <div className="flex flex-wrap gap-sm">
@@ -70,7 +70,7 @@ function People() {
                   setMessage(
                     result.errors.length
                       ? result.errors.join(" • ")
-                      : `Check-in: ${result.enrolled.length} • Check-out: ${result.revoked.length}`,
+                      : `Liberados: ${result.enrolled.length} • Removidos: ${result.revoked.length}`,
                   );
                   await router.invalidate();
                   setSyncing(false);
@@ -78,14 +78,14 @@ function People() {
                 className="flex items-center gap-xs rounded-lg border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-md"
               >
                 <Icon name="sync" className="text-sm" />
-                {syncing ? "Sincronizando…" : "Aplicar check-in / check-out"}
+                {syncing ? "Sincronizando…" : "Aplicar vigências"}
               </button>
               <Link
-                to="/people/register"
+                to="/staff/register"
                 className="flex items-center gap-xs rounded-lg bg-secondary-container px-md py-sm text-label-md font-bold text-on-secondary-container"
               >
                 <Icon name="add" className="text-sm" />
-                Novo hóspede
+                Novo funcionário
               </Link>
             </div>
           </div>
@@ -97,27 +97,27 @@ function People() {
           ) : null}
 
           <div className="space-y-sm">
-            <MobileSearch placeholder="Buscar nome, documento ou quarto..." />
+            <MobileSearch placeholder="Buscar nome, documento ou setor..." />
             <FilterChips
               value={stayFilter}
               onChange={setStayFilter}
               options={[
-                { id: "all", label: "Qualquer estadia" },
-                { id: "inStay", label: "Em estadia" },
-                { id: "pending", label: "Check-in pendente" },
-                { id: "checkedOut", label: "Check-out" },
+                { id: "all", label: "Todos" },
+                { id: "inStay", label: "Ativos" },
+                { id: "pending", label: "Aguardando início" },
+                { id: "checkedOut", label: "Encerrados" },
               ]}
             />
           </div>
 
           <div className="space-y-sm">
-            {guests.length === 0 ? (
+            {staff.length === 0 ? (
               <div className="rounded-xl border border-dashed border-outline-variant p-xl text-center text-on-surface-variant">
-                Nenhum hóspede ainda. Cadastre com foto, check-in e check-out.
+                Nenhum funcionário cadastrado. Use Novo funcionário para incluir a equipe.
               </div>
             ) : visible.length === 0 ? (
               <div className="rounded-xl border border-dashed border-outline-variant p-xl text-center text-on-surface-variant">
-                Nenhum hóspede com esses filtros.
+                Nenhum funcionário com esses filtros.
               </div>
             ) : (
               visible.map((person) => (
@@ -129,7 +129,7 @@ function People() {
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-title-lg text-primary">{person.name}</h3>
                     <p className="text-body-md text-on-surface-variant">
-                      {person.room ? `Quarto ${person.room}` : "Sem quarto"}
+                      {person.department || "Sem setor"}
                       {" • "}
                       {person.cpf}
                     </p>

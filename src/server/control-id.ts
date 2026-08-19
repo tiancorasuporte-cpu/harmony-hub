@@ -23,6 +23,8 @@ export type AccessLog = {
   user_id?: number;
   portal_id?: number;
   confidence?: number;
+  registration?: string;
+  userName?: string;
 };
 
 type Json = Record<string, unknown>;
@@ -189,16 +191,23 @@ export async function loadObjects<T>(
   device: DeviceEndpoint,
   object: string,
   extra: Json = {},
+  timeoutMs = 8000,
 ): Promise<T[]> {
   return withSession(device, async (session) => {
     const payload = await request(commandUrl(device, "load_objects.fcgi", session), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ object, ...extra }),
+      timeoutMs,
     });
     const record = payload && typeof payload === "object" ? (payload as Json) : {};
     const list = record[object];
-    return Array.isArray(list) ? (list as T[]) : [];
+    if (Array.isArray(list)) return list as T[];
+    if (list && typeof list === "object") {
+      const nested = (list as Json)[object];
+      if (Array.isArray(nested)) return nested as T[];
+    }
+    return [];
   });
 }
 
@@ -443,15 +452,113 @@ export async function addUserToGroup(device: DeviceEndpoint, userId: number, gro
   await createObjects(device, "user_groups", [{ user_id: userId, group_id: groupId }]).catch(() => undefined);
 }
 
+function nestedRecord(value: unknown): Json | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Json) : null;
+}
+
+function pickUserId(row: Json): number | undefined {
+  const users = nestedRecord(row.users);
+  const candidates = [row.user_id, row.userid, row.userId, row.user, users?.id];
+  for (const value of candidates) {
+    const nested = nestedRecord(value);
+    const id = toControlIdId(nested?.id ?? value);
+    if (id) return id;
+  }
+  return undefined;
+}
+
+function pickText(row: Json, keys: string[]): string | undefined {
+  const users = nestedRecord(row.users);
+  for (const key of keys) {
+    const value = row[key] ?? users?.[key.replace(/^users\./, "")];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function normalizeAccessLog(raw: unknown): AccessLog | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Json;
+  const id = Number(row.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const event = Number(row.event ?? row.event_id ?? 0);
+  return {
+    id,
+    time: Number(row.time ?? 0),
+    event: Number.isFinite(event) ? event : 0,
+    user_id: pickUserId(row),
+    portal_id: row.portal_id == null ? undefined : Number(row.portal_id),
+    confidence: row.confidence == null ? undefined : Number(row.confidence),
+    registration: pickText(row, ["registration", "users.registration"]),
+    userName: pickText(row, ["name", "users.name", "user_name"]),
+  };
+}
+
+const ACCESS_LOG_FIELDS: Array<string | Json> = [
+  "id",
+  "time",
+  "event",
+  "user_id",
+  "portal_id",
+  "confidence",
+  { object: "users", field: "name" },
+  { object: "users", field: "registration" },
+];
+
+async function loadAccessLogRows(device: DeviceEndpoint, extra: Json, timeoutMs: number) {
+  try {
+    return await loadObjects<unknown>(
+      device,
+      "access_logs",
+      { ...extra, join: "LEFT", fields: ACCESS_LOG_FIELDS },
+      timeoutMs,
+    );
+  } catch {
+    return await loadObjects<unknown>(device, "access_logs", extra, timeoutMs);
+  }
+}
+
 export async function loadAccessLogs(device: DeviceEndpoint, afterId: number): Promise<AccessLog[]> {
-  const extra: Json =
-    afterId > 0
-      ? {
-          where: { access_logs: { id: { ">": afterId } } },
-          order: ["id", "ascending"],
-          limit: 300,
-        }
-      : { order: ["id", "descending"], limit: 100 };
-  const logs = await loadObjects<AccessLog>(device, "access_logs", extra);
-  return logs.sort((a, b) => a.id - b.id);
+  const timeoutMs = afterId > 0 ? 3500 : 6000;
+  const newest = await loadAccessLogRows(
+    device,
+    {
+      order: ["id", "descending"],
+      limit: afterId > 0 ? 150 : 250,
+    },
+    timeoutMs,
+  );
+  let logs = newest.map(normalizeAccessLog).filter((log): log is AccessLog => log !== null);
+  const maxReturned = logs.reduce((max, log) => Math.max(max, log.id), 0);
+  const looksLikeOldest = logs.length > 0 && maxReturned < afterId;
+
+  if (afterId > 0 && (logs.length === 0 || looksLikeOldest)) {
+    const newer = await loadAccessLogRows(
+      device,
+      {
+        where: [
+          {
+            object: "access_logs",
+            field: "id",
+            operator: ">",
+            value: afterId,
+          },
+        ],
+        order: ["id", "ascending"],
+        limit: 200,
+      },
+      timeoutMs,
+    );
+    logs = [...logs, ...newer.map(normalizeAccessLog).filter((log): log is AccessLog => log !== null)];
+  }
+
+  const seen = new Set<number>();
+  return logs
+    .filter((log) => {
+      if (afterId > 0 && log.id <= afterId) return false;
+      if (seen.has(log.id)) return false;
+      seen.add(log.id);
+      return true;
+    })
+    .sort((a, b) => a.id - b.id);
 }

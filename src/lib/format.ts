@@ -1,30 +1,30 @@
 export function formatRelative(iso: string | null | undefined, now = Date.now()) {
-  if (!iso) return "Never";
+  if (!iso) return "Nunca";
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "Never";
+  if (Number.isNaN(then)) return "Nunca";
   const diff = Math.max(0, now - then);
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
+  if (minutes < 1) return "Agora";
+  if (minutes < 60) return `há ${minutes} min`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  if (hours < 24) return hours === 1 ? "há 1 hora" : `há ${hours} horas`;
   const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
+  return days === 1 ? "há 1 dia" : `há ${days} dias`;
 }
 
 const APP_TIMEZONE = "America/Sao_Paulo";
 
 export function formatWhen(iso: string | null | undefined) {
-  if (!iso) return "No access yet";
+  if (!iso) return "—";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "No access yet";
+  if (Number.isNaN(date.getTime())) return "—";
   const dateFmt: Intl.DateTimeFormatOptions = { timeZone: APP_TIMEZONE, day: "2-digit", month: "2-digit", year: "numeric" };
   const timeFmt: Intl.DateTimeFormatOptions = { timeZone: APP_TIMEZONE, hour: "2-digit", minute: "2-digit" };
   const today = new Date();
   const sameDay =
     date.toLocaleDateString("pt-BR", dateFmt) === today.toLocaleDateString("pt-BR", dateFmt);
   const time = date.toLocaleTimeString("pt-BR", timeFmt);
-  if (sameDay) return `Today, ${time}`;
+  if (sameDay) return `Hoje, ${time}`;
   return `${date.toLocaleDateString("pt-BR", dateFmt)}, ${time}`;
 }
 
