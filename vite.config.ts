@@ -6,10 +6,29 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+import { httpsCert } from "./scripts/https-cert";
+
+const https = await httpsCert();
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+  },
+  vite: {
+    ssr: {
+      external: ["postgres", "bcryptjs"],
+    },
+    server: {
+      https,
+      host: true,
+      port: 8080,
+    },
+    preview: {
+      https,
+      host: true,
+      port: 8080,
+    },
   },
 });

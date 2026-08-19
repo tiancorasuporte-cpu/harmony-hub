@@ -2,8 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { redirectIfAuthenticated } from "@/lib/require-auth";
+import { loginFn } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: redirectIfAuthenticated,
   head: () => ({
     meta: [
       { title: "Sign in — Âncora Access" },
@@ -28,6 +31,8 @@ const LOGO =
 function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background p-margin-mobile md:p-margin-desktop">
@@ -50,9 +55,28 @@ function Login() {
 
         <form
           className="flex w-full flex-col gap-lg"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            navigate({ to: "/monitoring" });
+            setError(null);
+            setPending(true);
+            const form = new FormData(event.currentTarget);
+            try {
+              const result = await loginFn({
+                data: {
+                  username: String(form.get("username") ?? ""),
+                  password: String(form.get("password") ?? ""),
+                },
+              });
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
+              await navigate({ to: "/monitoring" });
+            } catch {
+              setError("Não foi possível conectar ao servidor. Tente novamente.");
+            } finally {
+              setPending(false);
+            }
           }}
         >
           <div className="flex flex-col gap-base">
@@ -103,12 +127,19 @@ function Login() {
             </div>
           </div>
 
+          {error ? (
+            <p className="rounded-lg bg-error-container px-sm py-sm text-label-md text-on-error-container">
+              {error}
+            </p>
+          ) : null}
+
           <div className="mt-sm flex w-full flex-col gap-md">
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-xs rounded-lg bg-secondary-container px-lg py-sm text-body-lg font-semibold text-primary shadow-elevation-1 transition-colors hover:bg-secondary-fixed"
+              disabled={pending}
+              className="flex w-full items-center justify-center gap-xs rounded-lg bg-secondary-container px-lg py-sm text-body-lg font-semibold text-primary shadow-elevation-1 transition-colors hover:bg-secondary-fixed disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Acessar
+              {pending ? "Entrando..." : "Acessar"}
               <Icon name="arrow_forward" className="text-[20px]" />
             </button>
             <div className="mt-base flex w-full justify-center">

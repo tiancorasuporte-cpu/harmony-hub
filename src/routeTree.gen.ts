@@ -11,7 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MonitoringRouteImport } from './routes/monitoring'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as UsersRouteImport } from './routes/users'
 import { Route as DevicesIndexRouteImport } from './routes/devices/index'
+import { Route as DevicesIdRouteImport } from './routes/devices/$id'
+import { Route as DevicesRegisterRouteImport } from './routes/devices/register'
+import { Route as PeopleIndexRouteImport } from './routes/people/index'
+import { Route as PeopleIdRouteImport } from './routes/people/$id'
+import { Route as PeopleRegisterRouteImport } from './routes/people/register'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,40 +32,158 @@ const MonitoringRoute = MonitoringRouteImport.update({
   path: '/monitoring',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevicesIndexRoute = DevicesIndexRouteImport.update({
   id: '/devices/',
   path: '/devices/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevicesIdRoute = DevicesIdRouteImport.update({
+  id: '/devices/$id',
+  path: '/devices/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevicesRegisterRoute = DevicesRegisterRouteImport.update({
+  id: '/devices/register',
+  path: '/devices/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleIndexRoute = PeopleIndexRouteImport.update({
+  id: '/people/',
+  path: '/people/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleIdRoute = PeopleIdRouteImport.update({
+  id: '/people/$id',
+  path: '/people/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleRegisterRoute = PeopleRegisterRouteImport.update({
+  id: '/people/register',
+  path: '/people/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/monitoring': typeof MonitoringRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
+  '/users': typeof UsersRoute
+  '/devices/$id': typeof DevicesIdRoute
+  '/devices/register': typeof DevicesRegisterRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/people/register': typeof PeopleRegisterRoute
   '/devices/': typeof DevicesIndexRoute
+  '/people/': typeof PeopleIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/monitoring': typeof MonitoringRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
+  '/users': typeof UsersRoute
+  '/devices/$id': typeof DevicesIdRoute
+  '/devices/register': typeof DevicesRegisterRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/people/register': typeof PeopleRegisterRoute
   '/devices': typeof DevicesIndexRoute
+  '/people': typeof PeopleIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/monitoring': typeof MonitoringRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
+  '/users': typeof UsersRoute
+  '/devices/$id': typeof DevicesIdRoute
+  '/devices/register': typeof DevicesRegisterRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/people/register': typeof PeopleRegisterRoute
   '/devices/': typeof DevicesIndexRoute
+  '/people/': typeof PeopleIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/monitoring' | '/devices/'
+  fullPaths:
+    | '/'
+    | '/monitoring'
+    | '/profile'
+    | '/settings'
+    | '/setup'
+    | '/users'
+    | '/devices/$id'
+    | '/devices/register'
+    | '/people/$id'
+    | '/people/register'
+    | '/devices/'
+    | '/people/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/monitoring' | '/devices'
-  id: '__root__' | '/' | '/monitoring' | '/devices/'
+  to:
+    | '/'
+    | '/monitoring'
+    | '/profile'
+    | '/settings'
+    | '/setup'
+    | '/users'
+    | '/devices/$id'
+    | '/devices/register'
+    | '/people/$id'
+    | '/people/register'
+    | '/devices'
+    | '/people'
+  id:
+    | '__root__'
+    | '/'
+    | '/monitoring'
+    | '/profile'
+    | '/settings'
+    | '/setup'
+    | '/users'
+    | '/devices/$id'
+    | '/devices/register'
+    | '/people/$id'
+    | '/people/register'
+    | '/devices/'
+    | '/people/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MonitoringRoute: typeof MonitoringRoute
+  ProfileRoute: typeof ProfileRoute
+  SettingsRoute: typeof SettingsRoute
+  SetupRoute: typeof SetupRoute
+  UsersRoute: typeof UsersRoute
+  DevicesIdRoute: typeof DevicesIdRoute
+  DevicesRegisterRoute: typeof DevicesRegisterRoute
+  PeopleIdRoute: typeof PeopleIdRoute
+  PeopleRegisterRoute: typeof PeopleRegisterRoute
   DevicesIndexRoute: typeof DevicesIndexRoute
+  PeopleIndexRoute: typeof PeopleIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,11 +202,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MonitoringRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/devices/': {
       id: '/devices/'
       path: '/devices'
       fullPath: '/devices/'
       preLoaderRoute: typeof DevicesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/devices/$id': {
+      id: '/devices/$id'
+      path: '/devices/$id'
+      fullPath: '/devices/$id'
+      preLoaderRoute: typeof DevicesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/devices/register': {
+      id: '/devices/register'
+      path: '/devices/register'
+      fullPath: '/devices/register'
+      preLoaderRoute: typeof DevicesRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people/': {
+      id: '/people/'
+      path: '/people'
+      fullPath: '/people/'
+      preLoaderRoute: typeof PeopleIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people/$id': {
+      id: '/people/$id'
+      path: '/people/$id'
+      fullPath: '/people/$id'
+      preLoaderRoute: typeof PeopleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people/register': {
+      id: '/people/register'
+      path: '/people/register'
+      fullPath: '/people/register'
+      preLoaderRoute: typeof PeopleRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,7 +278,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MonitoringRoute: MonitoringRoute,
+  ProfileRoute: ProfileRoute,
+  SettingsRoute: SettingsRoute,
+  SetupRoute: SetupRoute,
+  UsersRoute: UsersRoute,
+  DevicesIdRoute: DevicesIdRoute,
+  DevicesRegisterRoute: DevicesRegisterRoute,
+  PeopleIdRoute: PeopleIdRoute,
+  PeopleRegisterRoute: PeopleRegisterRoute,
   DevicesIndexRoute: DevicesIndexRoute,
+  PeopleIndexRoute: PeopleIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

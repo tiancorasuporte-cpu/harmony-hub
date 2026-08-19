@@ -1,24 +1,59 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { Icon } from "@/components/Icon";
+import { logoutFn } from "@/lib/auth";
+import { isAdmin, roleLabel } from "@/lib/require-auth";
 import { cn } from "@/lib/utils";
+import { Route as RootRoute } from "@/routes/__root";
+import type { AppUser } from "@/db/schema";
+
+const ShellSearchContext = createContext<{
+  query: string;
+  setQuery: (value: string) => void;
+}>({ query: "", setQuery: () => undefined });
+
+export function useShellSearch() {
+  return useContext(ShellSearchContext);
+}
 
 const NAV = [
-  { to: "/people", label: "People", icon: "group" },
-  { to: "/devices", label: "Devices", icon: "key_visualizer" },
-  { to: "/monitoring", label: "Monitoring", icon: "monitoring" },
-  { to: "/settings", label: "Settings", icon: "settings" },
+  { to: "/people", label: "People", icon: "group", adminOnly: false },
+  { to: "/devices", label: "Devices", icon: "key_visualizer", adminOnly: true },
+  { to: "/monitoring", label: "Monitoring", icon: "monitoring", adminOnly: false },
+  { to: "/users", label: "Usuários", icon: "manage_accounts", adminOnly: true },
+  { to: "/settings", label: "Settings", icon: "settings", adminOnly: false },
 ] as const;
 
-const AVATAR =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDrjdRfJFKIP5xlNr0mokA1SpUCabwicHUZOsXb-RHDhtHrtWPOVCTVhvr5WkUytwuEizfPPtfbUq1o9qGBhZdV4cTQBxZ8XwN_M0xGrRn9sqYfIfZ6IBcfQhWtwUV2K6uEVvauVFD3p8fD93qIdpVuHsoriBUaPovE3FFpHgZyEREsB96rHRA69U_Rs3rJSbbRBpJU8eSbklS5OILLhmis4X21Y4N1jvRSAxIMo5_p5U0nzMYofiitUg";
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "U";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]!.slice(0, 1)}${parts[parts.length - 1]!.slice(0, 1)}`.toUpperCase();
+}
 
-function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: (() => void) | undefined }) {
+function NavList({
+  pathname,
+  user,
+  onNavigate,
+}: {
+  pathname: string;
+  user: AppUser | null;
+  onNavigate?: (() => void) | undefined;
+}) {
+  const items = NAV.filter((item) => !item.adminOnly || isAdmin(user));
   return (
     <nav className="flex-1 space-y-1">
-      {NAV.map((item) => {
-        const active = pathname.startsWith(item.to);
+      {items.map((item) => {
+        const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
         return (
           <Link
             key={item.to}
@@ -40,7 +75,17 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: (() 
   );
 }
 
-function SidebarInner({ onNavigate, pathname }: { onNavigate?: (() => void) | undefined; pathname: string }) {
+function SidebarInner({
+  onNavigate,
+  pathname,
+  user,
+}: {
+  onNavigate?: (() => void) | undefined;
+  pathname: string;
+  user: AppUser | null;
+}) {
+  const navigate = useNavigate();
+
   return (
     <div className="flex h-full flex-col px-md py-xl">
       <div className="mb-xl flex items-center gap-sm px-xs">
@@ -55,33 +100,109 @@ function SidebarInner({ onNavigate, pathname }: { onNavigate?: (() => void) | un
         </div>
       </div>
 
-      <button
-        type="button"
+      <Link
+        to="/people/register"
         className="mb-lg flex w-full items-center justify-center gap-xs rounded-lg bg-secondary-container px-md py-sm text-label-md font-bold text-on-secondary-container shadow-elevation-1 transition-colors hover:bg-secondary-fixed active:scale-[0.98]"
       >
         <Icon name="add" className="text-sm" />
         Add New Access
-      </button>
+      </Link>
 
-      <NavList pathname={pathname} onNavigate={onNavigate} />
+      <NavList pathname={pathname} user={user} onNavigate={onNavigate} />
 
       <div className="mt-auto space-y-1 border-t border-outline-variant pt-lg">
-        <a
-          href="#"
-          className="flex items-center gap-sm rounded-lg px-md py-sm text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
-        >
-          <Icon name="help_outline" className="text-xl" />
-          <span>Help</span>
-        </a>
-        <Link
-          to="/"
-          onClick={onNavigate}
-          className="flex items-center gap-sm rounded-lg px-md py-sm text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
+        <button
+          type="button"
+          onClick={async () => {
+            onNavigate?.();
+            await logoutFn();
+            await navigate({ to: "/" });
+          }}
+          className="flex w-full items-center gap-sm rounded-lg px-md py-sm text-left text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
         >
           <Icon name="logout" className="text-xl" />
-          <span>Sign Out</span>
-        </Link>
+          <span>Sair</span>
+        </button>
       </div>
+    </div>
+  );
+}
+
+function HeaderClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+  return <>{now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</>;
+}
+
+function ProfileMenu({ user }: { user: AppUser | null }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      if (boxRef.current && !boxRef.current.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
+
+  if (!user) return null;
+
+  return (
+    <div className="relative" ref={boxRef}>
+      <button
+        type="button"
+        aria-label="Perfil"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex items-center gap-xs rounded-full p-1 transition-colors hover:bg-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary-container"
+      >
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-outline-variant bg-secondary-container text-label-md font-bold text-on-secondary-container">
+          {initials(user.name)}
+        </span>
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-full z-50 mt-sm w-64 overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-elevation-1">
+          <div className="border-b border-outline-variant px-md py-sm">
+            <p className="truncate text-title-lg text-primary">{user.name}</p>
+            <p className="text-label-md text-on-surface-variant">{roleLabel(user.role)}</p>
+          </div>
+          <Link
+            to="/profile"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-sm px-md py-sm text-left text-label-md text-on-surface hover:bg-surface-container-low"
+          >
+            <Icon name="person" className="text-sm" />
+            Meu perfil
+          </Link>
+          {isAdmin(user) ? (
+            <Link
+              to="/users"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-sm px-md py-sm text-left text-label-md text-on-surface hover:bg-surface-container-low"
+            >
+              <Icon name="manage_accounts" className="text-sm" />
+              Usuários
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            onClick={async () => {
+              setOpen(false);
+              await logoutFn();
+              await navigate({ to: "/" });
+            }}
+            className="flex w-full items-center gap-sm px-md py-sm text-left text-label-md text-on-surface hover:bg-surface-container-low"
+          >
+            <Icon name="logout" className="text-sm" />
+            Sair
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -96,12 +217,20 @@ export function AppShell({
   searchPlaceholder?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = RootRoute.useRouteContext();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const search = useMemo(() => ({ query, setQuery }), [query]);
+
+  useEffect(() => {
+    setQuery("");
+  }, [pathname]);
 
   return (
+    <ShellSearchContext.Provider value={search}>
     <div className="flex min-h-screen bg-background text-on-background">
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-[280px] border-r border-outline-variant bg-surface md:block">
-        <SidebarInner pathname={pathname} />
+        <SidebarInner pathname={pathname} user={user} />
       </aside>
 
       {open && (
@@ -112,12 +241,12 @@ export function AppShell({
             onClick={() => setOpen(false)}
           />
           <div className="absolute left-0 top-0 h-full w-[280px] border-r border-outline-variant bg-surface">
-            <SidebarInner pathname={pathname} onNavigate={() => setOpen(false)} />
+            <SidebarInner pathname={pathname} user={user} onNavigate={() => setOpen(false)} />
           </div>
         </div>
       )}
 
-      <div className="flex min-h-screen flex-1 flex-col md:ml-[280px]">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-[280px]">
         <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-outline-variant bg-surface px-margin-mobile py-md md:px-margin-desktop">
           <button
             type="button"
@@ -128,7 +257,7 @@ export function AppShell({
             <Icon name="menu" />
           </button>
 
-          <div className="hidden max-w-md flex-1 items-center md:flex">
+          <div className="hidden min-w-0 max-w-[28rem] flex-1 items-center md:flex">
             <div className="relative w-full">
               <Icon
                 name="search"
@@ -136,6 +265,8 @@ export function AppShell({
               />
               <input
                 type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
                 placeholder={searchPlaceholder}
                 className="input-glow w-full rounded-full border border-transparent bg-surface-container-low py-sm pl-[40px] pr-sm text-body-md text-on-surface outline-none transition-all placeholder:text-on-surface-variant focus:border-outline focus:bg-surface-container-lowest"
               />
@@ -144,39 +275,18 @@ export function AppShell({
 
           <div className="text-headline-md font-bold text-primary md:hidden">{mobileTitle}</div>
 
+          <div className="hidden px-md text-title-lg tabular-nums text-primary md:block">
+            <HeaderClock />
+          </div>
+
           <div className="flex items-center gap-sm">
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary"
-            >
-              <Icon name="notifications" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-error" />
-            </button>
-            <button
-              type="button"
-              aria-label="Help"
-              className="hidden rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary sm:block"
-            >
-              <Icon name="help" />
-            </button>
-            <div className="mx-sm hidden h-6 w-px bg-outline-variant sm:block" />
-            <button
-              type="button"
-              className="flex items-center gap-xs rounded-full p-1 transition-colors hover:bg-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary-container"
-            >
-              <img
-                src={AVATAR}
-                alt="Administrator profile"
-                loading="lazy"
-                className="h-8 w-8 rounded-full border border-outline-variant object-cover"
-              />
-            </button>
+            <ProfileMenu user={user} />
           </div>
         </header>
 
         {children}
       </div>
     </div>
+    </ShellSearchContext.Provider>
   );
 }
