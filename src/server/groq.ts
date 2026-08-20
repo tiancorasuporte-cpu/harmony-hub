@@ -22,7 +22,7 @@ function decodeEnvValue(value: string) {
 }
 
 /** Always re-read GROQ_* from .env so hot reloads / stale process.env don't keep a dead model. */
-function readGroqConfig() {
+export function readGroqConfig() {
   const fromFile: Record<string, string> = {};
   const envPath = resolve(process.cwd(), ".env");
   if (existsSync(envPath)) {
@@ -42,6 +42,7 @@ function readGroqConfig() {
 
   // Keep process.env in sync for the rest of the request.
   if (apiKey) process.env["GROQ_API_KEY"] = apiKey;
+  else delete process.env["GROQ_API_KEY"];
   process.env["GROQ_MODEL"] = model;
 
   return { apiKey, model };

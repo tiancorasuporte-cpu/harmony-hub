@@ -5,6 +5,11 @@ import { AppShell } from "@/components/AppShell";
 import { Icon } from "@/components/Icon";
 import { enterHotelFn } from "@/lib/auth";
 import {
+  getGroqSettingsFn,
+  saveGroqSettingsFn,
+  testGroqFn,
+} from "@/lib/groq-settings";
+import {
   createHotelFn,
   deleteHotelFn,
   listHotelsFn,
@@ -16,7 +21,10 @@ import { requireSuperadmin } from "@/lib/require-auth";
 
 export const Route = createFileRoute("/hotels/")({
   beforeLoad: requireSuperadmin,
-  loader: () => listHotelsFn(),
+  loader: async () => {
+    const [hotels, groq] = await Promise.all([listHotelsFn(), getGroqSettingsFn()]);
+    return { hotels, groq };
+  },
   head: () => ({
     meta: [{ title: "Hotéis — Âncora Access" }],
   }),
@@ -24,7 +32,7 @@ export const Route = createFileRoute("/hotels/")({
 });
 
 function HotelsPage() {
-  const hotels = Route.useLoaderData();
+  const { hotels, groq } = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
@@ -45,6 +53,8 @@ function HotelsPage() {
               Gerencie unidades, libere módulos (Câmeras e Waha) e entre para operar como a unidade.
             </p>
           </div>
+
+          <GroqSettingsPanel initial={groq} fieldClass={fieldClass} />
 
           <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
             <h3 className="mb-md text-title-lg text-primary">Novo hotel</h3>
@@ -262,5 +272,158 @@ function HotelsPage() {
         </div>
       </main>
     </AppShell>
+  );
+}
+
+function GroqSettingsPanel({
+  initial,
+  fieldClass,
+}: {
+  initial: {
+    model: string;
+    hasApiKey: boolean;
+    configured: boolean;
+    maskedKey: string | null;
+  };
+  fieldClass: string;
+}) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  return (
+    <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
+      <h3 className="mb-sm flex items-center gap-xs text-title-lg text-primary">
+        <Icon name="smart_toy" className="text-secondary" />
+        Assistente IA (Groq)
+      </h3>
+      <p className="mb-md text-body-md text-on-surface-variant">
+        Configure aqui a chave do Groq. Ela é salva no <code className="text-label-md">.env</code> do
+        servidor — em um servidor novo você sobe o código e cola a chave neste painel.
+      </p>
+      <p className="mb-md text-label-md text-on-surface-variant">
+        Status:{" "}
+        {initial.configured ? (
+          <span className="font-semibold text-primary">
+            ativa {initial.maskedKey ? `(${initial.maskedKey})` : ""}
+          </span>
+        ) : (
+          <span className="font-semibold text-on-surface-variant">
+            não configurada (ajuda rápida no chat)
+          </span>
+        )}
+      </p>
+
+      <form
+        className="grid grid-cols-1 gap-md md:grid-cols-2"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setError(null);
+          setMessage(null);
+          const form = new FormData(event.currentTarget);
+          setPending(true);
+          try {
+            const result = await saveGroqSettingsFn({
+              data: {
+                apiKey: String(form.get("apiKey") ?? ""),
+                model: String(form.get("model") ?? ""),
+              },
+            });
+            if (!result.ok) {
+              setError("Não foi possível salvar.");
+              return;
+            }
+            setMessage(
+              result.cleared
+                ? "Chave removida. O chat volta para a ajuda rápida."
+                : "Configuração Groq salva no servidor.",
+            );
+            event.currentTarget.reset();
+            await router.invalidate();
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        <label className="text-label-md text-on-surface-variant md:col-span-2">
+          Chave da API Groq
+          <input
+            name="apiKey"
+            type="password"
+            autoComplete="off"
+            placeholder={initial.hasApiKey ? "Deixe em branco para manter a chave atual" : "gsk_…"}
+            className={fieldClass}
+          />
+        </label>
+        <label className="text-label-md text-on-surface-variant md:col-span-2">
+          Modelo
+          <input
+            name="model"
+            required
+            defaultValue={initial.model || "openai/gpt-oss-20b"}
+            placeholder="openai/gpt-oss-20b"
+            className={fieldClass}
+          />
+        </label>
+        <div className="flex flex-wrap gap-xs md:col-span-2">
+          <button
+            type="submit"
+            disabled={pending || testing}
+            className="rounded-lg bg-secondary-container px-md py-sm text-label-md font-bold text-on-secondary-container disabled:opacity-70"
+          >
+            {pending ? "Salvando…" : "Salvar Groq"}
+          </button>
+          <button
+            type="button"
+            disabled={pending || testing || !initial.configured}
+            className="rounded-lg border border-outline-variant px-md py-sm text-label-md text-primary disabled:opacity-60"
+            onClick={async () => {
+              setError(null);
+              setMessage(null);
+              setTesting(true);
+              try {
+                const result = await testGroqFn();
+                if (!result.ok) setError(result.error);
+                else setMessage(`Teste ok: ${result.answer}`);
+              } finally {
+                setTesting(false);
+              }
+            }}
+          >
+            {testing ? "Testando…" : "Testar conexão"}
+          </button>
+          <button
+            type="button"
+            disabled={pending || testing || !initial.hasApiKey}
+            className="rounded-lg border border-error/30 bg-error-container px-md py-sm text-label-md text-on-error-container disabled:opacity-60"
+            onClick={async () => {
+              if (!window.confirm("Remover a chave Groq deste servidor?")) return;
+              setError(null);
+              setMessage(null);
+              setPending(true);
+              try {
+                await saveGroqSettingsFn({
+                  data: {
+                    apiKey: "",
+                    model: initial.model || "openai/gpt-oss-20b",
+                    clearKey: true,
+                  },
+                });
+                setMessage("Chave removida.");
+                await router.invalidate();
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            Remover chave
+          </button>
+        </div>
+      </form>
+      {error ? <p className="mt-md text-label-md text-error">{error}</p> : null}
+      {message ? <p className="mt-md text-label-md text-primary">{message}</p> : null}
+    </section>
   );
 }
