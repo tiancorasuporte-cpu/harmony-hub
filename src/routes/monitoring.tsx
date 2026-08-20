@@ -5,8 +5,10 @@ import { AppShell, useShellSearch } from "@/components/AppShell";
 import { FilterChips, MobileSearch } from "@/components/FilterBar";
 import { Icon } from "@/components/Icon";
 import { PersonPhoto } from "@/components/PersonPhoto";
+import { openDeviceDoorFn } from "@/lib/devices";
 import { formatWhen } from "@/lib/format";
 import { listPresenceFn } from "@/lib/monitoring";
+import { listDeviceOptionsFn } from "@/lib/people";
 import { requireAuth } from "@/lib/require-auth";
 import { matchesQuery } from "@/lib/text-search";
 
@@ -57,7 +59,13 @@ export const Route = createFileRoute("/monitoring")({
     day: search.day,
     page: search.page,
   }),
-  loader: ({ deps }) => listPresenceFn({ data: deps }),
+  loader: async ({ deps }) => {
+    const [presence, devices] = await Promise.all([
+      listPresenceFn({ data: deps }),
+      listDeviceOptionsFn(),
+    ]);
+    return { ...presence, devices };
+  },
   head: () => ({
     meta: [
       { title: "Monitoramento — Âncora Access" },
@@ -79,7 +87,7 @@ function eventIcon(kind: string) {
 }
 
 function Monitoring() {
-  const { people, events, eventTotal, eventPage, eventPageCount } = Route.useLoaderData();
+  const { people, events, eventTotal, eventPage, eventPageCount, devices } = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const router = useRouter();
@@ -87,6 +95,9 @@ function Monitoring() {
   const [statusFilter, setStatusFilter] = useState<"all" | "Active" | "Inactive">("all");
   const [kindFilter, setKindFilter] = useState<"all" | "guest" | "staff">("all");
   const [eventFilter, setEventFilter] = useState<"all" | "face" | "button" | "remote">("all");
+  const [triggerOpen, setTriggerOpen] = useState(false);
+  const [busyDeviceId, setBusyDeviceId] = useState<number | null>(null);
+  const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
   const active = people.filter((person) => person.status === "Active").length;
   const hasDateFilter = Boolean(search.year || search.month || search.day);
 
@@ -137,13 +148,90 @@ function Monitoring() {
     <AppShell mobileTitle="Monitoramento" searchPlaceholder="Buscar pessoa, quarto ou evento...">
       <main className="flex-1 p-margin-mobile md:p-margin-desktop">
         <div className="mx-auto max-w-[80rem] space-y-lg">
-          <div>
-            <h2 className="text-headline-lg tracking-tight text-primary">Monitoramento</h2>
-            <p className="mt-base text-body-lg text-on-surface-variant">
-              Eventos do Face Max (face, botoeira e acionamento remoto). {active} ativo
-              {active === 1 ? "" : "s"} agora. Atualização contínua.
-            </p>
+          <div className="flex flex-col gap-md sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-headline-lg tracking-tight text-primary">Monitoramento</h2>
+              <p className="mt-base text-body-lg text-on-surface-variant">
+                Eventos do Face Max (face, botoeira e acionamento remoto). {active} ativo
+                {active === 1 ? "" : "s"} agora. Atualização contínua.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTriggerMessage(null);
+                setTriggerOpen((value) => !value);
+              }}
+              className="flex h-12 shrink-0 items-center justify-center gap-xs rounded-lg bg-secondary-container px-md text-sm font-bold text-on-secondary-container shadow-elevation-1 hover:bg-secondary-fixed"
+            >
+              <Icon name="settings_remote" className="text-sm" />
+              {triggerOpen ? "Fechar acionamentos" : "Acionar equipamentos"}
+            </button>
           </div>
+
+          {triggerOpen ? (
+            <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
+              <h3 className="mb-sm text-title-lg text-primary">Acionamento remoto</h3>
+              <p className="mb-md text-body-md text-on-surface-variant">
+                Abra a porta do Face Max selecionado. O evento aparece na lista em seguida.
+              </p>
+              {devices.length === 0 ? (
+                <p className="text-label-md text-on-surface-variant">
+                  Nenhum equipamento cadastrado neste hotel.
+                </p>
+              ) : (
+                <ul className="space-y-sm">
+                  {devices.map((device) => (
+                    <li
+                      key={device.id}
+                      className="flex flex-col gap-sm rounded-lg border border-outline-variant px-md py-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-body-md font-medium text-primary">
+                          {device.location || device.name}
+                        </p>
+                        {device.location ? (
+                          <p className="truncate text-label-md text-on-surface-variant">{device.name}</p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={busyDeviceId === device.id}
+                        onClick={async () => {
+                          setBusyDeviceId(device.id);
+                          setTriggerMessage(null);
+                          try {
+                            const result = await openDeviceDoorFn({ data: { id: device.id } });
+                            if (!result.ok) {
+                              setTriggerMessage(result.error);
+                            } else {
+                              setTriggerMessage(
+                                `Porta liberada em ${device.location || device.name}.`,
+                              );
+                              await router.invalidate();
+                            }
+                          } catch {
+                            setTriggerMessage("Não foi possível acionar o equipamento.");
+                          } finally {
+                            setBusyDeviceId(null);
+                          }
+                        }}
+                        className="flex h-11 shrink-0 items-center justify-center gap-xs rounded-lg bg-primary px-md text-sm font-semibold text-on-primary disabled:opacity-60"
+                      >
+                        <Icon name="door_open" className="text-sm" />
+                        {busyDeviceId === device.id ? "Acionando…" : "Abrir porta"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {triggerMessage ? (
+                <p className="mt-md rounded-lg bg-surface-container-high px-sm py-sm text-label-md text-primary">
+                  {triggerMessage}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="space-y-sm">
             <h3 className="text-title-lg text-primary">Eventos de acesso</h3>

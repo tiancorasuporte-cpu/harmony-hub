@@ -44,6 +44,15 @@ async function hotelDevice(id: number) {
   return { device, hotelId };
 }
 
+async function hotelDeviceForStaff(id: number) {
+  const { requireHotelSession } = await import("@/lib/tenant");
+  const { getDeviceById } = await import("@/db/devices");
+  const { hotelId } = await requireHotelSession();
+  const device = await getDeviceById(id);
+  if (!device || device.hotel_id !== hotelId) return { device: undefined, hotelId };
+  return { device, hotelId };
+}
+
 function asEndpoint(device: {
   ip: string;
   port: number;
@@ -203,7 +212,7 @@ export const openDeviceDoorFn = createServerFn({ method: "POST" })
   .validator(idSchema)
   .handler(async ({ data }) => {
     const { openDoor } = await import("@/server/control-id");
-    const { device } = await hotelDevice(data.id);
+    const { device } = await hotelDeviceForStaff(data.id);
     if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
     try {
       await openDoor(asEndpoint(device));
