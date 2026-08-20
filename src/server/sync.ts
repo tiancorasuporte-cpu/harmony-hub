@@ -344,24 +344,47 @@ export async function pullAccessLogs(deviceId: number, endpoint?: DeviceEndpoint
   return logs.length;
 }
 
+async function pullDevicesSequentially(devices: DeviceRow[]) {
+  let total = 0;
+  for (const device of devices) {
+    total += await pullAccessLogs(device.id, asEndpoint(device)).catch(() => 0);
+  }
+  return total;
+}
+
 export async function pullAllDeviceLogs() {
-  const devices = await listAllDevices();
-  const counts = await Promise.all(
-    devices.map((device) => pullAccessLogs(device.id, asEndpoint(device)).catch(() => 0)),
-  );
-  return counts.reduce((sum, count) => sum + count, 0);
+  return pullDevicesSequentially(await listAllDevices());
 }
 
 type PollerGlobal = typeof globalThis & {
   __ancoraAccessLogPoller?: ReturnType<typeof setInterval>;
   __ancoraAccessLogPulling?: boolean;
   __ancoraAccessLogPullStarted?: number;
+  __ancoraHotelLogPulls?: Map<number, Promise<number>>;
 };
+
+/** Pull every device for a hotel, awaiting completion so monitoring shows all of them. */
+export async function pullHotelDeviceLogs(hotelId: number) {
+  const g = globalThis as PollerGlobal;
+  const pulls = (g.__ancoraHotelLogPulls ??= new Map());
+  const existing = pulls.get(hotelId);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    const devices = await listDevices(hotelId);
+    return pullDevicesSequentially(devices);
+  })().finally(() => {
+    pulls.delete(hotelId);
+  });
+
+  pulls.set(hotelId, promise);
+  return promise;
+}
 
 export async function pollAccessLogsOnce() {
   const g = globalThis as PollerGlobal;
   const started = g.__ancoraAccessLogPullStarted ?? 0;
-  if (g.__ancoraAccessLogPulling && Date.now() - started < 12_000) return;
+  if (g.__ancoraAccessLogPulling && Date.now() - started < 45_000) return;
   g.__ancoraAccessLogPulling = true;
   g.__ancoraAccessLogPullStarted = Date.now();
   try {
@@ -378,6 +401,6 @@ export function ensureAccessLogPoller() {
   if (g.__ancoraAccessLogPoller) return;
   g.__ancoraAccessLogPoller = setInterval(() => {
     void pollAccessLogsOnce();
-  }, 1000);
+  }, 2000);
   void pollAccessLogsOnce();
 }

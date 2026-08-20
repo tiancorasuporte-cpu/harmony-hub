@@ -1,8 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { BrandLogo } from "@/components/BrandLogo";
 import { Icon } from "@/components/Icon";
+import {
+  LoginShell,
+  loginFieldClass,
+  loginFieldWithToggleClass,
+  loginSubmitClass,
+} from "@/components/LoginShell";
 import { redirectIfAuthenticated } from "@/lib/require-auth";
 import { loginFn } from "@/lib/auth";
 
@@ -38,138 +43,136 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [exiting, setExiting] = useState(false);
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background p-margin-mobile md:p-margin-desktop">
-      <main className="flex w-full max-w-[420px] flex-col items-center rounded-lg border border-surface-variant bg-surface-container-lowest p-xl">
-        <header className="mb-xl flex w-full flex-col items-center border-b border-surface-variant pb-lg">
-          <div className="mb-md flex h-[120px] w-[120px] items-center justify-center">
-            <BrandLogo className="max-h-full max-w-full" />
-          </div>
-          <h1 className="text-center text-headline-md tracking-tight text-primary">
-            Âncora Access
-          </h1>
-          <p className="mt-base text-center text-body-md text-on-surface-variant">
-            Acesso da unidade
-          </p>
-        </header>
-
-        <form
-          className="flex w-full flex-col gap-lg"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setError(null);
-            setPending(true);
-            const form = new FormData(event.currentTarget);
-            const hotelSlug = String(form.get("hotelSlug") ?? "").trim();
-            try {
-              const result = await loginFn({
-                data: {
-                  username: String(form.get("username") ?? ""),
-                  password: String(form.get("password") ?? ""),
-                  hotelSlug,
-                },
-              });
-              if (!result.ok) {
-                setError(result.error);
-                return;
-              }
-              await navigate({ to: result.hotelId ? "/monitoring" : "/hotels" });
-            } catch {
-              setError("Não foi possível conectar ao servidor. Tente novamente.");
-            } finally {
-              setPending(false);
+    <LoginShell
+      title="Bem-vindo"
+      subtitle="Entre com o código da unidade e suas credenciais."
+      exiting={exiting}
+    >
+      <form
+        className="flex w-full flex-col gap-md"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setError(null);
+          setPending(true);
+          const form = new FormData(event.currentTarget);
+          const hotelSlug = String(form.get("hotelSlug") ?? "").trim();
+          try {
+            const result = await loginFn({
+              data: {
+                username: String(form.get("username") ?? ""),
+                password: String(form.get("password") ?? ""),
+                hotelSlug,
+              },
+            });
+            if (!result.ok) {
+              setError(result.error);
+              return;
             }
-          }}
-        >
-          <div className="flex flex-col gap-base">
-            <label className="text-label-md text-primary" htmlFor="hotelSlug">
-              Código da unidade
-            </label>
-            <div className="relative">
-              <Icon
-                name="apartment"
-                className="absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
-              />
-              <input
-                id="hotelSlug"
-                name="hotelSlug"
-                type="text"
-                required
-                defaultValue={hotelFromLink ?? ""}
-                autoComplete="organization"
-                placeholder="Informe o código da unidade"
-                className="input-glow w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-sm pl-xl pr-sm text-body-md text-on-surface outline-none transition-all placeholder:text-outline focus:border-primary"
-              />
-            </div>
+            const { markLoginEnter, wait } = await import("@/lib/login-enter");
+            markLoginEnter();
+            setExiting(true);
+            await wait(900);
+            await navigate({ to: result.hotelId ? "/monitoring" : "/hotels" });
+          } catch {
+            setError("Não foi possível conectar ao servidor. Tente novamente.");
+            setExiting(false);
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        <div className="flex flex-col gap-base">
+          <label className="text-label-md font-medium text-primary" htmlFor="hotelSlug">
+            Código da unidade
+          </label>
+          <div className="relative">
+            <Icon
+              name="apartment"
+              className="pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+            />
+            <input
+              id="hotelSlug"
+              name="hotelSlug"
+              type="text"
+              required
+              defaultValue={hotelFromLink ?? ""}
+              autoComplete="organization"
+              placeholder="Ex.: hotel-centro"
+              className={loginFieldClass}
+            />
           </div>
+        </div>
 
-          <div className="flex flex-col gap-base">
-            <label className="text-label-md text-primary" htmlFor="username">
-              Usuário
-            </label>
-            <div className="relative">
-              <Icon
-                name="person"
-                className="absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
-              />
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                placeholder="Digite seu usuário"
-                className="input-glow w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-sm pl-xl pr-sm text-body-md text-on-surface outline-none transition-all placeholder:text-outline focus:border-primary"
-              />
-            </div>
+        <div className="flex flex-col gap-base">
+          <label className="text-label-md font-medium text-primary" htmlFor="username">
+            Usuário
+          </label>
+          <div className="relative">
+            <Icon
+              name="person"
+              className="pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+            />
+            <input
+              id="username"
+              name="username"
+              type="text"
+              required
+              autoComplete="username"
+              placeholder="Seu usuário"
+              className={loginFieldClass}
+            />
           </div>
+        </div>
 
-          <div className="flex flex-col gap-base">
-            <label className="text-label-md text-primary" htmlFor="password">
-              Senha
-            </label>
-            <div className="relative">
-              <Icon
-                name="lock"
-                className="absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
-              />
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                required
-                placeholder="Digite sua senha"
-                className="input-glow w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-sm pl-xl pr-xl text-body-md text-on-surface outline-none transition-all placeholder:text-outline focus:border-primary"
-              />
-              <button
-                type="button"
-                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-sm top-1/2 -translate-y-1/2 text-on-surface-variant transition-colors hover:text-primary"
-              >
-                <Icon name={showPassword ? "visibility_off" : "visibility"} className="text-[20px]" />
-              </button>
-            </div>
-          </div>
-
-          {error ? (
-            <p className="rounded-lg bg-error-container px-sm py-sm text-label-md text-on-error-container">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="mt-sm flex w-full flex-col gap-md">
+        <div className="flex flex-col gap-base">
+          <label className="text-label-md font-medium text-primary" htmlFor="password">
+            Senha
+          </label>
+          <div className="relative">
+            <Icon
+              name="lock"
+              className="pointer-events-none absolute left-sm top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant"
+            />
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              autoComplete="current-password"
+              placeholder="Sua senha"
+              className={loginFieldWithToggleClass}
+            />
             <button
-              type="submit"
-              disabled={pending}
-              className="flex w-full items-center justify-center gap-xs rounded-lg bg-secondary-container px-lg py-sm text-body-lg font-semibold text-primary shadow-elevation-1 transition-colors hover:bg-secondary-fixed disabled:cursor-not-allowed disabled:opacity-70"
+              type="button"
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-sm top-1/2 -translate-y-1/2 rounded-md p-xs text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary"
             >
-              {pending ? "Entrando..." : "Acessar"}
-              <Icon name="arrow_forward" className="text-[20px]" />
+              <Icon name={showPassword ? "visibility_off" : "visibility"} className="text-[20px]" />
             </button>
           </div>
-        </form>
-      </main>
-    </div>
+        </div>
+
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-xl bg-error-container px-md py-sm text-label-md text-on-error-container"
+          >
+            {error}
+          </p>
+        ) : null}
+
+        <button type="submit" disabled={pending} className={loginSubmitClass}>
+          {pending ? "Entrando..." : "Acessar suíte"}
+          <Icon
+            name="arrow_forward"
+            className="text-[20px] transition-transform group-hover:translate-x-0.5"
+          />
+        </button>
+      </form>
+    </LoginShell>
   );
 }

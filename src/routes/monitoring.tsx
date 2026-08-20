@@ -106,7 +106,7 @@ function Monitoring() {
       if (document.hidden) return;
       void router.invalidate();
     };
-    const timer = setInterval(refresh, 1000);
+    const timer = setInterval(refresh, 2000);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       clearInterval(timer);

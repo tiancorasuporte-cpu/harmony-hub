@@ -232,3 +232,151 @@
     box-shadow: 0 0 0 3px color-mix(in oklch, var(--secondary-container) 35%, transparent);
   }
 }
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -18px, 0);
+  }
+}
+
+@keyframes login-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes login-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+@keyframes login-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes login-orbit-dot {
+  from {
+    transform: rotate(0deg) translateX(92px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(92px) rotate(-360deg);
+  }
+}
+
+@keyframes login-particle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translate3d(0, 0, 0) scale(0.85);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translate3d(0, -28px, 0) scale(1.15);
+  }
+}
+
+@keyframes login-grid-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 48px 48px, 48px 48px;
+  }
+}
+
+@keyframes login-shimmer {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateX(-30%);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(30%);
+  }
+}
+
+@keyframes login-enter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes login-enter-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+@keyframes login-enter-logo {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shell-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes shell-enter-veil {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}

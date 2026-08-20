@@ -24,11 +24,13 @@ export const listPresenceFn = createServerFn({ method: "GET" })
   .validator((input) => presenceFilterSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
     const { requireHotelSession } = await import("@/lib/tenant");
-    const { ensureAccessLogPoller } = await import("@/server/sync");
+    const { ensureAccessLogPoller, pullHotelDeviceLogs } = await import("@/server/sync");
     const { listPresence, listRecentAccessEvents, countFilteredAccessEvents, backfillAccessEventGuests } =
       await import("@/db/events");
     const { hotelId } = await requireHotelSession();
     ensureAccessLogPoller();
+    // Wait for every hotel device — fire-and-forget polling often only finished the first one.
+    await pullHotelDeviceLogs(hotelId).catch(() => 0);
     await backfillAccessEventGuests().catch(() => undefined);
     const pageSize = 10;
     const eventTotal = await countFilteredAccessEvents({

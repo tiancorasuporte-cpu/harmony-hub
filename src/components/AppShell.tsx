@@ -13,6 +13,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { Icon } from "@/components/Icon";
 import { logoutFn, leaveHotelFn } from "@/lib/auth";
 import { APP_NAME } from "@/lib/brand";
+import { consumeLoginEnter } from "@/lib/login-enter";
 import { isAdmin, isSuperadmin, roleLabel } from "@/lib/require-auth";
 import { cn } from "@/lib/utils";
 import { Route as RootRoute } from "@/routes/__root";
@@ -314,15 +315,39 @@ export function AppShell({
   const { user } = RootRoute.useRouteContext();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [enterAnim, setEnterAnim] = useState(false);
   const search = useMemo(() => ({ query, setQuery }), [query]);
 
   useEffect(() => {
     setQuery("");
   }, [pathname]);
 
+  useEffect(() => {
+    if (!consumeLoginEnter()) return;
+    setEnterAnim(true);
+    const timer = window.setTimeout(() => setEnterAnim(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <ShellSearchContext.Provider value={search}>
-    <div className="flex min-h-screen bg-background text-on-background">
+    <div
+      className={cn(
+        "relative flex min-h-screen bg-background text-on-background",
+        enterAnim && "animate-[shell-enter_0.85s_cubic-bezier(0.22,1,0.36,1)_both]",
+      )}
+    >
+      {enterAnim ? (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-background animate-[shell-enter-veil_1.1s_ease-out_forwards]"
+        >
+          <div className="relative flex h-24 w-24 items-center justify-center">
+            <span className="absolute inset-0 rounded-full border-2 border-secondary-container/60 animate-[login-enter-ring_0.9s_ease-out_both]" />
+            <BrandLogo className="relative h-14 w-auto animate-[login-enter-logo_0.55s_ease-out_both]" />
+          </div>
+        </div>
+      ) : null}
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-[280px] border-r border-outline-variant bg-surface md:block">
         <SidebarInner pathname={pathname} user={user} />
       </aside>
