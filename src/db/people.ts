@@ -146,12 +146,26 @@ export async function findPersonByCpf(
   exceptId?: number,
 ): Promise<PersonRow | undefined> {
   const db = await getDb();
+  const digitsOnly = cpf.replace(/\D/g, "");
   const rows = exceptId
     ? await db<PersonRow[]>`
-        select * from guests where cpf = ${cpf} and hotel_id = ${hotelId} and id <> ${exceptId} limit 1
+        select * from guests
+        where hotel_id = ${hotelId}
+          and id <> ${exceptId}
+          and (
+            cpf = ${cpf}
+            or regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') = ${digitsOnly}
+          )
+        limit 1
       `
     : await db<PersonRow[]>`
-        select * from guests where cpf = ${cpf} and hotel_id = ${hotelId} limit 1
+        select * from guests
+        where hotel_id = ${hotelId}
+          and (
+            cpf = ${cpf}
+            or regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') = ${digitsOnly}
+          )
+        limit 1
       `;
   return rows[0];
 }
@@ -343,6 +357,11 @@ export async function markFaceRevoked(deviceId: number, guestId: number) {
 export async function deleteDevicePersonMapping(deviceId: number, guestId: number) {
   const db = await getDb();
   await db`delete from device_people where device_id = ${deviceId} and guest_id = ${guestId}`;
+}
+
+export async function clearDevicePeople(deviceId: number) {
+  const db = await getDb();
+  await db`delete from device_people where device_id = ${deviceId}`;
 }
 
 export async function setPersonTargetAll(id: number, targetAll: boolean) {

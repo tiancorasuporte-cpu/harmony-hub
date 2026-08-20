@@ -82,6 +82,9 @@ export async function notifyGuestFaceReady(person: PersonRow) {
   if (person.whatsapp_notified_at) return { sent: false as const };
   if (!isWahaConfigured()) return { sent: false as const };
 
+  const hotel = await getHotelById(person.hotel_id);
+  if (!hotel?.module_waha) return { sent: false as const };
+
   const chatId = toWhatsAppChatId(person.phone);
   if (!chatId) return { sent: false as const };
 
@@ -89,7 +92,6 @@ export async function notifyGuestFaceReady(person: PersonRow) {
   const syncedIds = mappings.filter((item) => item.face_synced).map((item) => item.device_id);
   if (syncedIds.length === 0) return { sent: false as const };
 
-  const hotel = await getHotelById(person.hotel_id);
   const devices = await listDevices(person.hotel_id);
   const names = devices.filter((device) => syncedIds.includes(device.id)).map(deviceLabel);
 

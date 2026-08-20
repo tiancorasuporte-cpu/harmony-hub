@@ -155,6 +155,10 @@ export const createPersonFn = createServerFn({ method: "POST" })
       const stay = await processStayWindows();
       return { ok: true as const, person, stay };
     } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+      if (code === "23505") {
+        return { ok: false as const, error: "Já existe uma pessoa com este documento neste hotel." };
+      }
       return {
         ok: false as const,
         error: error instanceof Error ? error.message : "Não foi possível cadastrar",

@@ -4,7 +4,14 @@ import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Icon } from "@/components/Icon";
 import { enterHotelFn } from "@/lib/auth";
-import { createHotelFn, listHotelsFn, setHotelActiveFn } from "@/lib/hotels";
+import {
+  createHotelFn,
+  deleteHotelFn,
+  listHotelsFn,
+  renameHotelFn,
+  setHotelActiveFn,
+  setHotelModulesFn,
+} from "@/lib/hotels";
 import { requireSuperadmin } from "@/lib/require-auth";
 
 export const Route = createFileRoute("/hotels/")({
@@ -21,6 +28,7 @@ function HotelsPage() {
   const router = useRouter();
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -34,8 +42,7 @@ function HotelsPage() {
           <div>
             <h2 className="text-headline-lg tracking-tight text-primary">Hotéis</h2>
             <p className="mt-base text-body-lg text-on-surface-variant">
-              Cada hotel tem usuários, equipamentos e pessoas separados. Entre em um hotel para operar como a
-              unidade.
+              Gerencie unidades, libere módulos (Câmeras e Waha) e entre para operar como a unidade.
             </p>
           </div>
 
@@ -63,7 +70,9 @@ function HotelsPage() {
                     setError(result.error);
                     return;
                   }
-                  setMessage(`${result.hotel.name} criado. Use o admin da unidade para entrar pelo login.`);
+                  setMessage(
+                    `${result.hotel.name} criado. Libere os módulos desejados e use o admin da unidade no login.`,
+                  );
                   form.reset();
                   await router.invalidate();
                 } finally {
@@ -101,46 +110,151 @@ function HotelsPage() {
             {message ? <p className="mt-md text-label-md text-primary">{message}</p> : null}
           </section>
 
-          <ul className="space-y-sm">
+          <ul className="space-y-md">
             {hotels.map((hotel) => (
               <li
                 key={hotel.id}
-                className="flex flex-wrap items-center justify-between gap-md rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm"
+                className="rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-md"
               >
-                <div>
-                  <p className="text-title-lg text-on-surface">{hotel.name}</p>
-                  <p className="text-label-md text-on-surface-variant">
-                    Código: {hotel.slug} • login /?hotel={hotel.slug}
-                  </p>
-                  <p className="text-label-md text-on-surface-variant">
-                    {hotel.users} usuários • {hotel.devices} equipamentos • {hotel.people} pessoas
-                    {hotel.active ? "" : " • desativado"}
-                  </p>
+                <div className="flex flex-wrap items-start justify-between gap-md">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-title-lg text-on-surface">{hotel.name}</p>
+                    <p className="text-label-md text-on-surface-variant">
+                      Código: {hotel.slug} • login /?hotel={hotel.slug}
+                    </p>
+                    <p className="text-label-md text-on-surface-variant">
+                      {hotel.users} usuários • {hotel.devices} equipamentos • {hotel.people} pessoas
+                      {hotel.active ? "" : " • desativado"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-xs">
+                    <button
+                      type="button"
+                      disabled={busyId === hotel.id}
+                      className="rounded-lg bg-secondary-container px-md py-sm text-label-md font-bold text-on-secondary-container disabled:opacity-60"
+                      onClick={async () => {
+                        const result = await enterHotelFn({ data: { hotelId: hotel.id } });
+                        if (result.ok) await navigate({ to: "/monitoring" });
+                      }}
+                    >
+                      <span className="inline-flex items-center gap-xs">
+                        <Icon name="login" className="text-sm" />
+                        Entrar
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === hotel.id}
+                      className="rounded-lg border border-outline-variant px-md py-sm text-label-md text-primary disabled:opacity-60"
+                      onClick={async () => {
+                        const next = window.prompt("Novo nome do hotel", hotel.name);
+                        if (next == null) return;
+                        const trimmed = next.trim();
+                        if (trimmed.length < 2 || trimmed === hotel.name) return;
+                        setBusyId(hotel.id);
+                        setError(null);
+                        try {
+                          const result = await renameHotelFn({ data: { id: hotel.id, name: trimmed } });
+                          if (!result.ok) setError(result.error);
+                          else {
+                            setMessage(`Hotel renomeado para ${result.hotel.name}.`);
+                            await router.invalidate();
+                          }
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                    >
+                      Editar nome
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === hotel.id}
+                      className="rounded-lg border border-outline-variant px-md py-sm text-label-md text-primary disabled:opacity-60"
+                      onClick={async () => {
+                        setBusyId(hotel.id);
+                        try {
+                          await setHotelActiveFn({ data: { id: hotel.id, active: !hotel.active } });
+                          await router.invalidate();
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                    >
+                      {hotel.active ? "Desativar" : "Ativar"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === hotel.id}
+                      className="rounded-lg border border-error/30 bg-error-container px-md py-sm text-label-md text-on-error-container disabled:opacity-60"
+                      onClick={async () => {
+                        const confirmed = window.confirm(
+                          `Excluir ${hotel.name}?\n\nIsso apaga usuários, pessoas, equipamentos e câmeras desta unidade. Não dá para desfazer.`,
+                        );
+                        if (!confirmed) return;
+                        setBusyId(hotel.id);
+                        setError(null);
+                        try {
+                          const result = await deleteHotelFn({ data: { id: hotel.id } });
+                          if (!result.ok) setError(result.error);
+                          else {
+                            setMessage(`${hotel.name} excluído.`);
+                            await router.invalidate();
+                          }
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-xs">
-                  <button
-                    type="button"
-                    className="rounded-lg bg-secondary-container px-md py-sm text-label-md font-bold text-on-secondary-container"
-                    onClick={async () => {
-                      const result = await enterHotelFn({ data: { hotelId: hotel.id } });
-                      if (result.ok) await navigate({ to: "/monitoring" });
-                    }}
-                  >
-                    <span className="inline-flex items-center gap-xs">
-                      <Icon name="login" className="text-sm" />
-                      Entrar
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-outline-variant px-md py-sm text-label-md text-primary"
-                    onClick={async () => {
-                      await setHotelActiveFn({ data: { id: hotel.id, active: !hotel.active } });
-                      await router.invalidate();
-                    }}
-                  >
-                    {hotel.active ? "Desativar" : "Ativar"}
-                  </button>
+
+                <div className="mt-md flex flex-wrap gap-md border-t border-outline-variant pt-md">
+                  <p className="w-full text-label-md font-bold uppercase tracking-wider text-on-surface-variant">
+                    Módulos liberados
+                  </p>
+                  <label className="flex items-center gap-sm text-body-md text-on-surface">
+                    <input
+                      type="checkbox"
+                      checked={hotel.moduleCameras}
+                      disabled={busyId === hotel.id}
+                      onChange={async (event) => {
+                        setBusyId(hotel.id);
+                        try {
+                          await setHotelModulesFn({
+                            data: { id: hotel.id, cameras: event.target.checked },
+                          });
+                          await router.invalidate();
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    Câmeras
+                  </label>
+                  <label className="flex items-center gap-sm text-body-md text-on-surface">
+                    <input
+                      type="checkbox"
+                      checked={hotel.moduleWaha}
+                      disabled={busyId === hotel.id}
+                      onChange={async (event) => {
+                        setBusyId(hotel.id);
+                        try {
+                          await setHotelModulesFn({
+                            data: { id: hotel.id, waha: event.target.checked },
+                          });
+                          await router.invalidate();
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    WhatsApp (Waha)
+                  </label>
                 </div>
               </li>
             ))}

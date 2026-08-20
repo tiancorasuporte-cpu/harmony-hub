@@ -10,6 +10,7 @@ import {
   listGuestDeviceIds,
   listPeopleForSync,
   markFaceRevoked,
+  clearDevicePeople,
   deleteDevicePersonMapping,
   setGuestDevices,
   setPersonTargetAll,
@@ -21,6 +22,7 @@ import { notifyGuestFaceReady } from "@/server/waha";
 import {
   addUserToGroup,
   destroyUser,
+  destroyAllUsers,
   ensureAccessPolicy,
   findOrCreateUser,
   findUsersByRegistration,
@@ -137,6 +139,15 @@ export async function removePersonEverywhere(person: PersonRow) {
   for (const device of unique.values()) {
     await revokePersonOnDevice(person, device);
   }
+}
+
+/** Apaga todas as faces/usuários do Face Max e zera o vínculo local desse equipamento. */
+export async function clearAllFacesOnDevice(deviceId: number) {
+  const device = await getDeviceById(deviceId);
+  if (!device) throw new Error("Equipamento não encontrado");
+  const result = await destroyAllUsers(asEndpoint(device));
+  await clearDevicePeople(deviceId);
+  return result;
 }
 
 export async function syncPersonToDevice(person: PersonRow, deviceId: number) {

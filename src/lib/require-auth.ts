@@ -33,6 +33,16 @@ export async function requireAuth() {
   return { user };
 }
 
+export async function requireCamerasModule() {
+  const ctx = await requireAuth();
+  const { getHotelBrandingFn } = await import("@/lib/hotels");
+  const branding = await getHotelBrandingFn();
+  if (!branding.moduleCameras) {
+    throw redirect({ to: "/monitoring" });
+  }
+  return ctx;
+}
+
 export async function requireAdmin() {
   const { user } = await requireAuth();
   if (!isAdmin(user)) {

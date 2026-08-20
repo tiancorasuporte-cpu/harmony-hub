@@ -17,6 +17,9 @@ export const getWahaSettingsFn = createServerFn({ method: "GET" }).handler(async
   const { requireAuth, isAdmin } = await import("@/lib/require-auth");
   const { user } = await requireAuth();
   if (!isAdmin(user)) return null;
+  const { getHotelById } = await import("@/db/hotels");
+  const hotel = user.hotelId ? await getHotelById(user.hotelId) : null;
+  if (!hotel?.module_waha) return null;
   const { readWahaConfig, isWahaConfigured } = await import("@/server/waha");
   const config = readWahaConfig();
   return {
@@ -31,7 +34,12 @@ export const saveWahaSettingsFn = createServerFn({ method: "POST" })
   .validator(saveSchema)
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/lib/require-auth");
-    await requireAdmin();
+    const { user } = await requireAdmin();
+    const { getHotelById } = await import("@/db/hotels");
+    const hotel = user.hotelId ? await getHotelById(user.hotelId) : null;
+    if (!hotel?.module_waha) {
+      return { ok: false as const, error: "Módulo WhatsApp (Waha) não liberado para este hotel." };
+    }
     const { upsertEnv } = await import("@/db/client");
     const url = data.url.trim().replace(/\/+$/, "");
     upsertEnv({
@@ -46,7 +54,12 @@ export const testWahaFn = createServerFn({ method: "POST" })
   .validator(testSchema)
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/lib/require-auth");
-    await requireAdmin();
+    const { user } = await requireAdmin();
+    const { getHotelById } = await import("@/db/hotels");
+    const hotel = user.hotelId ? await getHotelById(user.hotelId) : null;
+    if (!hotel?.module_waha) {
+      return { ok: false as const, error: "Módulo WhatsApp (Waha) não liberado para este hotel." };
+    }
     const chatId = toWhatsAppChatId(data.phone);
     if (!chatId) {
       return { ok: false as const, error: "Número de WhatsApp inválido." };

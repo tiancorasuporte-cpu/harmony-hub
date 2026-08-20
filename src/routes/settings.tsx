@@ -1,8 +1,13 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
 import { Icon } from "@/components/Icon";
+import {
+  clearHotelLogoFn,
+  getHotelBrandingFn,
+  uploadHotelLogoFn,
+} from "@/lib/hotels";
 import { getOverviewFn } from "@/lib/monitoring";
 import { isAdmin, requireAuth } from "@/lib/require-auth";
 import { formatPhone } from "@/lib/stay";
@@ -12,8 +17,12 @@ import { Route as RootRoute } from "@/routes/__root";
 export const Route = createFileRoute("/settings")({
   beforeLoad: requireAuth,
   loader: async () => {
-    const [overview, waha] = await Promise.all([getOverviewFn(), getWahaSettingsFn()]);
-    return { overview, waha };
+    const [overview, waha, branding] = await Promise.all([
+      getOverviewFn(),
+      getWahaSettingsFn(),
+      getHotelBrandingFn(),
+    ]);
+    return { overview, waha, branding };
   },
   head: () => ({
     meta: [{ title: "Configurações — Âncora Access" }],
@@ -22,7 +31,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function Settings() {
-  const { overview, waha } = Route.useLoaderData();
+  const { overview, waha, branding } = Route.useLoaderData();
   const { user } = RootRoute.useRouteContext();
   const admin = isAdmin(user);
 
@@ -30,8 +39,11 @@ function Settings() {
     ...(admin ? [{ label: "Equipamentos", value: overview.devices, to: "/devices" as const }] : []),
     { label: "Hóspedes", value: overview.people, to: "/people" as const },
     { label: "Ativos agora", value: overview.active, to: "/monitoring" as const },
+    ...(branding.moduleCameras
+      ? [{ label: "Câmeras", value: "→" as const, to: "/cameras" as const }]
+      : []),
     { label: "Eventos de acesso", value: overview.events, to: "/monitoring" as const },
-    ...(admin ? [{ label: "Usuários", value: "→", to: "/users" as const }] : []),
+    ...(admin ? [{ label: "Usuários", value: "→" as const, to: "/users" as const }] : []),
   ];
 
   return (
@@ -41,7 +53,11 @@ function Settings() {
           <div>
             <h2 className="text-headline-lg tracking-tight text-primary">Configurações</h2>
             <p className="mt-base text-body-lg text-on-surface-variant">
-              Status da integração com PostgreSQL, Face Max e WhatsApp (Waha).
+              Status da integração com PostgreSQL e Face Max
+              {branding.moduleCameras || branding.moduleWaha
+                ? `, ${[branding.moduleCameras ? "câmeras" : null, branding.moduleWaha ? "WhatsApp (Waha)" : null].filter(Boolean).join(" e ")}`
+                : ""}
+              .
             </p>
           </div>
 
@@ -57,6 +73,8 @@ function Settings() {
               </Link>
             ))}
           </div>
+
+          {admin ? <PartnerLogoSettings initial={branding} /> : null}
 
           <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
             <h3 className="mb-sm flex items-center gap-xs text-title-lg text-primary">
@@ -77,10 +95,125 @@ function Settings() {
             </p>
           </section>
 
-          {admin && waha ? <WahaSettings initial={waha} /> : null}
+          {admin && branding.moduleWaha && waha ? <WahaSettings initial={waha} /> : null}
         </div>
       </main>
     </AppShell>
+  );
+}
+
+function PartnerLogoSettings({
+  initial,
+}: {
+  initial: {
+    hotelId: number | null;
+    name: string | null;
+    logo: { mime: string; base64: string } | null;
+  };
+}) {
+  const router = useRouter();
+  const [preview, setPreview] = useState<string | null>(
+    initial.logo ? `data:${initial.logo.mime};base64,${initial.logo.base64}` : null,
+  );
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPreview(initial.logo ? `data:${initial.logo.mime};base64,${initial.logo.base64}` : null);
+  }, [initial.logo]);
+
+  if (!initial.hotelId) return null;
+
+  return (
+    <section className="rounded-xl border border-outline-variant bg-surface-container-lowest p-lg">
+      <h3 className="mb-sm flex items-center gap-xs text-title-lg text-primary">
+        <Icon name="image" className="text-secondary" />
+        Logo do parceiro
+      </h3>
+      <p className="mb-md text-body-md text-on-surface-variant">
+        Aparece no topo do menu lateral, junto com o nome do hotel ({initial.name ?? "unidade"}). A
+        marca Âncora Access fica no rodapé do menu.
+      </p>
+      <div className="flex flex-col gap-md sm:flex-row sm:items-center">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-outline-variant bg-surface-container-high">
+          {preview ? (
+            <img src={preview} alt="Logo do parceiro" className="h-full w-full object-contain p-1" />
+          ) : (
+            <Icon name="apartment" className="text-3xl text-on-surface-variant" />
+          )}
+        </div>
+        <div className="flex flex-wrap gap-sm">
+          <label className="flex h-12 cursor-pointer items-center justify-center rounded-lg bg-primary px-md text-sm font-semibold text-on-primary">
+            {pending ? "Enviando…" : "Enviar logo"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              disabled={pending}
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                setPending(true);
+                setError(null);
+                setMessage(null);
+                try {
+                  const dataUrl = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(String(reader.result ?? ""));
+                    reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+                    reader.readAsDataURL(file);
+                  });
+                  const result = await uploadHotelLogoFn({
+                    data: { logoBase64: dataUrl, logoMime: file.type || "image/png" },
+                  });
+                  if (!result.ok) {
+                    setError(result.error);
+                    return;
+                  }
+                  setPreview(dataUrl);
+                  setMessage("Logo atualizada.");
+                  window.dispatchEvent(new Event("hotel-branding-changed"));
+                  await router.invalidate();
+                } catch {
+                  setError("Não foi possível enviar a logo.");
+                } finally {
+                  setPending(false);
+                }
+              }}
+            />
+          </label>
+          {preview ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={async () => {
+                setPending(true);
+                setError(null);
+                setMessage(null);
+                try {
+                  await clearHotelLogoFn();
+                  setPreview(null);
+                  setMessage("Logo removida.");
+                  window.dispatchEvent(new Event("hotel-branding-changed"));
+                  await router.invalidate();
+                } catch {
+                  setError("Não foi possível remover a logo.");
+                } finally {
+                  setPending(false);
+                }
+              }}
+              className="flex h-12 items-center justify-center rounded-lg border border-outline px-md text-sm font-semibold text-primary disabled:opacity-70"
+            >
+              Remover
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {message ? <p className="mt-md text-label-md text-primary">{message}</p> : null}
+      {error ? <p className="mt-md text-label-md text-error">{error}</p> : null}
+    </section>
   );
 }
 

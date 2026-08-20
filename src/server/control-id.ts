@@ -401,6 +401,48 @@ export async function destroyUser(device: DeviceEndpoint, userId: number) {
   await destroyObjects(device, "users", { users: { id: userId } });
 }
 
+export async function listDeviceUsers(device: DeviceEndpoint) {
+  const users = await loadObjects<{ id: number | string; registration?: string; name?: string }>(
+    device,
+    "users",
+    {},
+    20_000,
+  );
+  return users
+    .map((user) => ({
+      id: toControlIdId(user.id),
+      registration: user.registration,
+      name: user.name,
+    }))
+    .filter((user): user is { id: number; registration?: string; name?: string } => user.id != null);
+}
+
+/** Remove todos os usuários e faces do equipamento. */
+export async function destroyAllUsers(device: DeviceEndpoint) {
+  const users = await listDeviceUsers(device);
+  let removed = 0;
+  const errors: string[] = [];
+  for (const user of users) {
+    try {
+      await destroyUser(device, user.id);
+      removed += 1;
+    } catch (error) {
+      errors.push(
+        `${user.name || user.registration || user.id}: ${
+          error instanceof Error ? error.message : "falha"
+        }`,
+      );
+    }
+  }
+  // Confirma se sobrou alguém (destroy em lote quando a API permitir).
+  const remaining = await listDeviceUsers(device).catch(() => [] as Awaited<ReturnType<typeof listDeviceUsers>>);
+  if (remaining.length > 0) {
+    await destroyObjects(device, "users", { users: {} }).catch(() => undefined);
+  }
+  const leftover = await listDeviceUsers(device).catch(() => remaining);
+  return { removed, remaining: leftover.length, errors };
+}
+
 export async function findUsersByRegistration(device: DeviceEndpoint, registration: string) {
   const wanted = registrationDigits(registration);
   const users = await loadObjects<{ id: number | string; registration?: string; name?: string }>(device, "users");

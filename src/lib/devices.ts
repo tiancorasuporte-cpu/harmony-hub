@@ -234,6 +234,29 @@ export const syncDeviceFn = createServerFn({ method: "POST" })
     }
   });
 
+export const clearDeviceFacesFn = createServerFn({ method: "POST" })
+  .validator(idSchema)
+  .handler(async ({ data }) => {
+    const { updateDeviceProbe } = await import("@/db/devices");
+    const { clearAllFacesOnDevice } = await import("@/server/sync");
+    const { device } = await hotelDevice(data.id);
+    if (!device) return { ok: false as const, error: "Equipamento não encontrado" };
+    try {
+      const result = await clearAllFacesOnDevice(device.id);
+      await updateDeviceProbe(data.id, { lastError: null, seen: true });
+      return {
+        ok: true as const,
+        removed: result.removed,
+        remaining: result.remaining,
+        errors: result.errors,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao limpar faces";
+      await updateDeviceProbe(data.id, { lastError: message, seen: false });
+      return { ok: false as const, error: message };
+    }
+  });
+
 export const getDeviceFn = createServerFn({ method: "GET" })
   .validator(idSchema)
   .handler(async ({ data }) => {

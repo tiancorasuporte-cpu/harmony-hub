@@ -16,6 +16,8 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as CamerasIndexRouteImport } from './routes/cameras/index'
+import { Route as CamerasMosaicRouteImport } from './routes/cameras/mosaic'
 import { Route as DevicesIndexRouteImport } from './routes/devices/index'
 import { Route as DevicesIdRouteImport } from './routes/devices/$id'
 import { Route as DevicesRegisterRouteImport } from './routes/devices/register'
@@ -59,6 +61,16 @@ const SetupRoute = SetupRouteImport.update({
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CamerasIndexRoute = CamerasIndexRouteImport.update({
+  id: '/cameras/',
+  path: '/cameras/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CamerasMosaicRoute = CamerasMosaicRouteImport.update({
+  id: '/cameras/mosaic',
+  path: '/cameras/mosaic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevicesIndexRoute = DevicesIndexRouteImport.update({
@@ -115,11 +127,13 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/users': typeof UsersRoute
+  '/cameras/mosaic': typeof CamerasMosaicRoute
   '/devices/$id': typeof DevicesIdRoute
   '/devices/register': typeof DevicesRegisterRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/register': typeof PeopleRegisterRoute
   '/staff/register': typeof StaffRegisterRoute
+  '/cameras/': typeof CamerasIndexRoute
   '/devices/': typeof DevicesIndexRoute
   '/hotels/': typeof HotelsIndexRoute
   '/people/': typeof PeopleIndexRoute
@@ -133,11 +147,13 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/users': typeof UsersRoute
+  '/cameras/mosaic': typeof CamerasMosaicRoute
   '/devices/$id': typeof DevicesIdRoute
   '/devices/register': typeof DevicesRegisterRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/register': typeof PeopleRegisterRoute
   '/staff/register': typeof StaffRegisterRoute
+  '/cameras': typeof CamerasIndexRoute
   '/devices': typeof DevicesIndexRoute
   '/hotels': typeof HotelsIndexRoute
   '/people': typeof PeopleIndexRoute
@@ -152,11 +168,13 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/users': typeof UsersRoute
+  '/cameras/mosaic': typeof CamerasMosaicRoute
   '/devices/$id': typeof DevicesIdRoute
   '/devices/register': typeof DevicesRegisterRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/register': typeof PeopleRegisterRoute
   '/staff/register': typeof StaffRegisterRoute
+  '/cameras/': typeof CamerasIndexRoute
   '/devices/': typeof DevicesIndexRoute
   '/hotels/': typeof HotelsIndexRoute
   '/people/': typeof PeopleIndexRoute
@@ -172,11 +190,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/users'
+    | '/cameras/mosaic'
     | '/devices/$id'
     | '/devices/register'
     | '/people/$id'
     | '/people/register'
     | '/staff/register'
+    | '/cameras/'
     | '/devices/'
     | '/hotels/'
     | '/people/'
@@ -190,11 +210,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/users'
+    | '/cameras/mosaic'
     | '/devices/$id'
     | '/devices/register'
     | '/people/$id'
     | '/people/register'
     | '/staff/register'
+    | '/cameras'
     | '/devices'
     | '/hotels'
     | '/people'
@@ -208,11 +230,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/users'
+    | '/cameras/mosaic'
     | '/devices/$id'
     | '/devices/register'
     | '/people/$id'
     | '/people/register'
     | '/staff/register'
+    | '/cameras/'
     | '/devices/'
     | '/hotels/'
     | '/people/'
@@ -227,11 +251,13 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   UsersRoute: typeof UsersRoute
+  CamerasMosaicRoute: typeof CamerasMosaicRoute
   DevicesIdRoute: typeof DevicesIdRoute
   DevicesRegisterRoute: typeof DevicesRegisterRoute
   PeopleIdRoute: typeof PeopleIdRoute
   PeopleRegisterRoute: typeof PeopleRegisterRoute
   StaffRegisterRoute: typeof StaffRegisterRoute
+  CamerasIndexRoute: typeof CamerasIndexRoute
   DevicesIndexRoute: typeof DevicesIndexRoute
   HotelsIndexRoute: typeof HotelsIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
@@ -287,6 +313,20 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cameras/': {
+      id: '/cameras/'
+      path: '/cameras'
+      fullPath: '/cameras/'
+      preLoaderRoute: typeof CamerasIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cameras/mosaic': {
+      id: '/cameras/mosaic'
+      path: '/cameras/mosaic'
+      fullPath: '/cameras/mosaic'
+      preLoaderRoute: typeof CamerasMosaicRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/devices/': {
@@ -363,11 +403,13 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   UsersRoute: UsersRoute,
+  CamerasMosaicRoute: CamerasMosaicRoute,
   DevicesIdRoute: DevicesIdRoute,
   DevicesRegisterRoute: DevicesRegisterRoute,
   PeopleIdRoute: PeopleIdRoute,
   PeopleRegisterRoute: PeopleRegisterRoute,
   StaffRegisterRoute: StaffRegisterRoute,
+  CamerasIndexRoute: CamerasIndexRoute,
   DevicesIndexRoute: DevicesIndexRoute,
   HotelsIndexRoute: HotelsIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,

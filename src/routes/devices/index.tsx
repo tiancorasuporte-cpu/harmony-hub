@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { AppShell, useShellSearch } from "@/components/AppShell";
 import { FilterChips, MobileSearch } from "@/components/FilterBar";
 import { Icon } from "@/components/Icon";
-import { listDevicesFn, deleteDeviceFn, openDeviceDoorFn, restartDeviceFn, syncDeviceFn } from "@/lib/devices";
+import { listDevicesFn, deleteDeviceFn, openDeviceDoorFn, restartDeviceFn, syncDeviceFn, clearDeviceFacesFn } from "@/lib/devices";
 import { formatRelative, modelIcon, modelLabel } from "@/lib/format";
 import { requireAdmin } from "@/lib/require-auth";
 import { matchesQuery } from "@/lib/text-search";
@@ -51,7 +51,7 @@ function Devices() {
 
   const online = devices.filter((device) => device.online).length;
 
-  async function run(id: number, action: "sync" | "restart" | "open" | "delete") {
+  async function run(id: number, action: "sync" | "restart" | "open" | "delete" | "clearFaces") {
     setBusyId(id);
     setMessage(null);
     try {
@@ -63,6 +63,24 @@ function Devices() {
         if (!confirmed) return;
         const result = await deleteDeviceFn({ data: { id } });
         setMessage(result.ok ? "Equipamento excluído." : result.error);
+      } else if (action === "clearFaces") {
+        const device = devices.find((item) => item.id === id);
+        const confirmed = window.confirm(
+          `Limpar TODAS as faces de ${device?.name ?? "este equipamento"}?\n\nIsso remove todos os usuários e fotos do Face Max. Use ao cadastrar um equipamento que já tinha faces de outro sistema.`,
+        );
+        if (!confirmed) return;
+        const result = await clearDeviceFacesFn({ data: { id } });
+        if (!result.ok) {
+          setMessage(result.error);
+        } else {
+          const extra =
+            result.errors.length > 0
+              ? ` • Avisos: ${result.errors.slice(0, 2).join("; ")}`
+              : result.remaining > 0
+                ? ` • Restaram ${result.remaining} no equipamento`
+                : "";
+          setMessage(`Faces limpas: ${result.removed} removidas.${extra}`);
+        }
       } else if (action === "sync") {
         const result = await syncDeviceFn({ data: { id } });
         setMessage(
@@ -262,6 +280,15 @@ function Devices() {
                       className="rounded border border-outline-variant bg-surface-container-high px-3 py-1.5 text-label-md text-primary transition-colors hover:bg-surface-container-highest disabled:opacity-60"
                     >
                       Sync
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === device.id}
+                      onClick={() => run(device.id, "clearFaces")}
+                      className="rounded border border-error/30 bg-error-container px-3 py-1.5 text-label-md text-on-error-container transition-colors hover:brightness-95 disabled:opacity-60"
+                      title="Remove todos os usuários e faces do Face Max"
+                    >
+                      Limpar faces
                     </button>
                     {device.online ? (
                       <>

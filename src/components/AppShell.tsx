@@ -28,13 +28,16 @@ export function useShellSearch() {
 }
 
 const NAV = [
-  { to: "/people", label: "Hóspedes", icon: "hotel", adminOnly: false },
-  { to: "/staff", label: "Funcionários", icon: "badge", adminOnly: false },
-  { to: "/devices", label: "Equipamentos", icon: "key_visualizer", adminOnly: true },
-  { to: "/monitoring", label: "Monitoramento", icon: "monitoring", adminOnly: false },
-  { to: "/users", label: "Usuários", icon: "manage_accounts", adminOnly: true },
-  { to: "/settings", label: "Configurações", icon: "settings", adminOnly: false },
+  { to: "/people", label: "Hóspedes", icon: "hotel", adminOnly: false, module: null },
+  { to: "/staff", label: "Funcionários", icon: "badge", adminOnly: false, module: null },
+  { to: "/devices", label: "Equipamentos", icon: "key_visualizer", adminOnly: true, module: null },
+  { to: "/monitoring", label: "Monitoramento", icon: "monitoring", adminOnly: false, module: null },
+  { to: "/cameras", label: "Câmeras", icon: "videocam", adminOnly: false, module: "cameras" },
+  { to: "/users", label: "Usuários", icon: "manage_accounts", adminOnly: true, module: null },
+  { to: "/settings", label: "Configurações", icon: "settings", adminOnly: false, module: null },
 ] as const;
+
+type HotelModules = { cameras: boolean; waha: boolean };
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -46,13 +49,19 @@ function initials(name: string) {
 function NavList({
   pathname,
   user,
+  modules,
   onNavigate,
 }: {
   pathname: string;
   user: AppUser | null;
+  modules: HotelModules;
   onNavigate?: (() => void) | undefined;
 }) {
-  const items = NAV.filter((item) => !item.adminOnly || isAdmin(user));
+  const items = NAV.filter((item) => {
+    if (item.adminOnly && !isAdmin(user)) return false;
+    if (item.module === "cameras" && !modules.cameras) return false;
+    return true;
+  });
   return (
     <nav className="flex-1 space-y-1">
       {items.map((item) => {
@@ -88,15 +97,61 @@ function SidebarInner({
   user: AppUser | null;
 }) {
   const navigate = useNavigate();
+  const [partnerLogo, setPartnerLogo] = useState<string | null>(null);
+  const [modules, setModules] = useState<HotelModules>({ cameras: false, waha: false });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBranding() {
+      if (!user?.hotelId) {
+        setPartnerLogo(null);
+        setModules({ cameras: false, waha: false });
+        return;
+      }
+      const { getHotelBrandingFn } = await import("@/lib/hotels");
+      const branding = await getHotelBrandingFn();
+      if (cancelled) return;
+      if (branding.logo) {
+        setPartnerLogo(`data:${branding.logo.mime};base64,${branding.logo.base64}`);
+      } else {
+        setPartnerLogo(null);
+      }
+      setModules({
+        cameras: branding.moduleCameras,
+        waha: branding.moduleWaha,
+      });
+    }
+
+    void loadBranding();
+    const onChange = () => void loadBranding();
+    window.addEventListener("hotel-branding-changed", onChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("hotel-branding-changed", onChange);
+    };
+  }, [user?.hotelId]);
+
+  const hotelName = user?.hotelName ?? "Suíte de gestão";
 
   return (
     <div className="flex h-full flex-col px-md py-xl">
-      <div className="mb-xl flex items-center gap-sm px-xs">
-        <BrandLogo className="h-12 w-auto shrink-0" />
+      <div className="mb-xl flex items-center gap-md px-xs">
+        {partnerLogo ? (
+          <img
+            src={partnerLogo}
+            alt={hotelName}
+            className="h-16 max-h-16 max-w-[10rem] w-auto shrink-0 rounded-xl border border-outline-variant object-contain bg-surface-container-lowest p-1"
+          />
+        ) : (
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high">
+            <Icon name="apartment" className="text-3xl text-on-surface-variant" />
+          </div>
+        )}
         <div className="min-w-0">
-          <p className="text-title-lg leading-tight text-primary">{APP_NAME}</p>
+          <p className="truncate text-title-lg leading-tight text-primary">{hotelName}</p>
           <p className="text-label-md uppercase tracking-wider text-on-surface-variant">
-            {user?.hotelName ?? "Suíte de gestão"}
+            {user?.hotelId ? "Unidade" : "Gestão"}
           </p>
         </div>
       </div>
@@ -123,7 +178,7 @@ function SidebarInner({
       {pathname.startsWith("/hotels") ? (
         <nav className="flex-1" />
       ) : (
-        <NavList pathname={pathname} user={user} onNavigate={onNavigate} />
+        <NavList pathname={pathname} user={user} modules={modules} onNavigate={onNavigate} />
       )}
 
       <div className="mt-auto space-y-1 border-t border-outline-variant pt-lg">
@@ -152,6 +207,16 @@ function SidebarInner({
           <Icon name="logout" className="text-xl" />
           <span>Sair</span>
         </button>
+
+        <div className="mt-md flex items-center gap-sm border-t border-outline-variant px-xs pt-md">
+          <BrandLogo className="h-8 w-auto shrink-0 opacity-90" />
+          <div className="min-w-0">
+            <p className="truncate text-label-md font-bold text-primary">{APP_NAME}</p>
+            <p className="truncate text-[0.65rem] uppercase tracking-wider text-on-surface-variant">
+              Âncora Segurança
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

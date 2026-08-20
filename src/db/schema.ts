@@ -354,4 +354,33 @@ async function ensureHotels(sql: Awaited<ReturnType<typeof getSql>>) {
   if (!(await indexExists("guests_hotel_id_idx"))) {
     await sql.unsafe("create index guests_hotel_id_idx on guests (hotel_id)");
   }
+
+  // Documento único por hotel (não global) — permite o mesmo CPF em unidades diferentes.
+  await dropConstraint("guests", "guests_cpf_key");
+  if (!(await indexExists("guests_hotel_cpf_idx"))) {
+    await sql.unsafe(
+      "create unique index guests_hotel_cpf_idx on guests (hotel_id, cpf)",
+    );
+  }
+
+  if (!(await tableExists("cameras"))) {
+    await sql`
+      create table cameras (
+        id serial primary key,
+        hotel_id integer not null references hotels(id) on delete cascade,
+        name varchar(120) not null,
+        url text not null,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      )
+    `;
+  }
+  if (!(await indexExists("cameras_hotel_id_idx"))) {
+    await sql.unsafe("create index cameras_hotel_id_idx on cameras (hotel_id, id)");
+  }
+
+  await addColumn("hotels", "logo", "bytea");
+  await addColumn("hotels", "logo_mime", "varchar(64)");
+  await addColumn("hotels", "module_cameras", "boolean not null default false");
+  await addColumn("hotels", "module_waha", "boolean not null default false");
 }
