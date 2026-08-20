@@ -105,6 +105,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient; user
         href: "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon-16.png", type: "image/png", sizes: "16x16" },
+      { rel: "icon", href: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { rel: "icon", href: "/ancora-logo.png", type: "image/png", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/ancora-logo.png" },
     ],
   }),
 
