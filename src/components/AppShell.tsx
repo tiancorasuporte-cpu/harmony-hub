@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { HelpChat } from "@/components/HelpChat";
 import { Icon } from "@/components/Icon";
 import { logoutFn, leaveHotelFn } from "@/lib/auth";
 import { APP_NAME } from "@/lib/brand";
@@ -405,6 +406,7 @@ export function AppShell({
 
         {children}
       </div>
+      <HelpChat />
     </div>
     </ShellSearchContext.Provider>
   );

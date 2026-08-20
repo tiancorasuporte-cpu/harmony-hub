@@ -18,7 +18,7 @@ function loadEnvFile() {
     if (eq === -1) continue;
     const key = trimmed.slice(0, eq).trim();
     const value = decodeEnvValue(trimmed.slice(eq + 1).trim());
-    if (process.env[key] == null) {
+    if (process.env[key] == null || key.startsWith("GROQ_")) {
       process.env[key] = value;
     }
   }
